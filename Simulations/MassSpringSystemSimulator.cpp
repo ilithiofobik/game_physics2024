@@ -58,13 +58,45 @@ void MassSpringSystemSimulator::onMouse(int x, int y) {
 	m_trackmouse.y = y;
 }
 
-void setMass(float mass) { throw std::logic_error("Implement me!"); }
-void setStiffness(float stiffness) { throw std::logic_error("Implement me!"); }
-void setDampingFactor(float damping) { throw std::logic_error("Implement me!"); }
-int addMassPoint(Vec3 position, Vec3 Velocity, bool isFixed) { throw std::logic_error("Implement me!"); }
-void addSpring(int masspoint1, int masspoint2, float initialLength) { throw std::logic_error("Implement me!"); }
-int getNumberOfMassPoints() { throw std::logic_error("Implement me!"); }
-int getNumberOfSprings() { throw std::logic_error("Implement me!"); }
-Vec3 getPositionOfMassPoint(int index) { throw std::logic_error("Implement me!"); }
-Vec3 getVelocityOfMassPoint(int index) { throw std::logic_error("Implement me!"); }
-void applyExternalForce(Vec3 force) { throw std::logic_error("Implement me!"); }
+void MassSpringSystemSimulator::setMass(float mass) {
+	m_fMass = mass;
+}
+
+void MassSpringSystemSimulator::setStiffness(float stiffness) {
+	m_fStiffness = stiffness;
+}
+
+void MassSpringSystemSimulator::setDampingFactor(float damping) {
+	m_fDamping = damping;
+}
+
+int MassSpringSystemSimulator::addMassPoint(Vec3 position, Vec3 velocity, bool isFixed) {
+	m_vMassPoints.push_back(Point(position, velocity, m_fMass, m_fDamping, isFixed));
+	return m_vMassPoints.size() - 1;
+}
+
+void MassSpringSystemSimulator::addSpring(int masspoint1, int masspoint2, float initialLength) {
+	m_vSprings.push_back(Spring(masspoint1, masspoint2, m_fStiffness, initialLength));
+}
+
+int MassSpringSystemSimulator::getNumberOfMassPoints() {
+	return m_vMassPoints.size();
+}
+
+int MassSpringSystemSimulator::getNumberOfSprings() {
+	return m_vSprings.size();
+}
+
+Vec3 MassSpringSystemSimulator::getPositionOfMassPoint(int index) {
+	return m_vMassPoints[index].position;
+}
+
+Vec3 MassSpringSystemSimulator::getVelocityOfMassPoint(int index) {
+	return m_vMassPoints[index].velocity;
+}
+
+void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
+	for (Point& point : m_vMassPoints) {
+		point.force = force;
+	}
+}
