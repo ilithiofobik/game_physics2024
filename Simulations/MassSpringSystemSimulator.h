@@ -12,6 +12,7 @@
 
 #define RED Vec3(1.0, 0.0, 0.0)
 #define BLUE Vec3(0.0, 0.0, 1.0)
+#define SPHERESIZE Vec3(0.02, 0.02, 0.02)
 
 class MassSpringSystemSimulator :public Simulator {
 public:
@@ -40,6 +41,10 @@ public:
 	Vec3 getPositionOfMassPoint(int index);
 	Vec3 getVelocityOfMassPoint(int index);
 	void applyExternalForce(Vec3 force);
+	void calcAndApplyElasticForce();
+	void integrateEuler(float timeStep);
+	void integrateLeapFrog(float timeStep);
+	void integrateMidpoint(float timeStep);
 
 	// Do Not Change
 	void setIntegrator(int integrator) {
@@ -60,6 +65,5 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
-	float m_fSphereSize;
 };
 #endif

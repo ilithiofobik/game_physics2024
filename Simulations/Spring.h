@@ -13,12 +13,13 @@ public:
 
 	int point1;
 	int point2;
-	float stiffness;
-	float initialLength;
 
 	void computeElasticForces(const std::vector<Point>& points);
 	void addToEndPoints(std::vector<Point>& points);
+
 private:
+	float stiffness;
+	float initialLength;
 	Vec3 elasticForce;
 };
 #endif
