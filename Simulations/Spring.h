@@ -1,5 +1,10 @@
 #ifndef SPRING_h
 #define SPRING_h
+#include "util/vectorbase.h"
+#include "Point.h"
+#include <vector>
+
+using namespace GamePhysics;
 
 class Spring {
 public:
@@ -10,5 +15,10 @@ public:
 	int point2;
 	float stiffness;
 	float initialLength;
+
+	void computeElasticForces(const std::vector<Point>& points);
+	void addToEndPoints(std::vector<Point>& points);
+private:
+	Vec3 elasticForce;
 };
 #endif

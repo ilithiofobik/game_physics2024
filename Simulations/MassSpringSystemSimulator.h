@@ -10,6 +10,8 @@
 #define MIDPOINT 2
 // Do Not Change
 
+#define RED Vec3(1.0, 0.0, 0.0)
+#define BLUE Vec3(0.0, 0.0, 1.0)
 
 class MassSpringSystemSimulator :public Simulator {
 public:
@@ -58,5 +60,6 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
+	float m_fSphereSize;
 };
 #endif

@@ -13,6 +13,7 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_mouse.x = m_mouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
+	m_fSphereSize = 0.05;
 };
 
 // UI Functions
@@ -27,7 +28,7 @@ void MassSpringSystemSimulator::reset() {
 }
 
 void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
-	throw std::logic_error("Implement me!");
+	this->DUC = DUC;
 }
 
 void MassSpringSystemSimulator::notifyCaseChanged(int testCase) {
@@ -35,7 +36,7 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase) {
 }
 
 void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
-	throw std::logic_error("Implement me!");
+	m_externalForce = Vec3(); // for now
 }
 
 void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
@@ -43,7 +44,18 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 }
 
 void MassSpringSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
-	throw std::logic_error("Implement me!");
+	for (Point& p : m_vMassPoints) {
+		DUC->drawSphere(p.position, Vec3(m_fSphereSize, m_fSphereSize, m_fSphereSize));
+	}
+
+	for (Spring& s : m_vSprings) {
+		Vec3 pos1 = m_vMassPoints[s.point1].position;
+		Vec3 pos2 = m_vMassPoints[s.point2].position;
+
+		DUC->beginLine();
+		DUC->drawLine(pos1, RED, pos2, BLUE);
+		DUC->endLine();
+	}
 }
 
 void MassSpringSystemSimulator::onClick(int x, int y) {

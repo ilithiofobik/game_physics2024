@@ -12,3 +12,11 @@ Point::Point(Vec3 p, Vec3 v, float m, float d, bool isF) {
 float Point::distance(const Point& another) {
 	return sqrt(position.squaredDistanceTo(another.position));
 }
+
+void Point::clearForce() {
+	force = Vec3();
+}
+
+void Point::addForce(const Vec3& newForce) {
+	force += newForce;
+}
