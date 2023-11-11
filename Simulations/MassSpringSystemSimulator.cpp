@@ -17,7 +17,7 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 
 // UI Functions
 const char* MassSpringSystemSimulator::getTestCasesStr() {
-	return "Demo 1";
+	return "Demo 1, Demo 2, Demo 3, Demo 4";
 }
 
 void MassSpringSystemSimulator::reset() {
@@ -29,38 +29,119 @@ void MassSpringSystemSimulator::reset() {
 void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 	TwType TW_TYPE_INTEGRATOR = TwDefineEnumFromString("Integrator", "Euler, LeapFrog, Midpoint");
-	TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
+
+	switch (m_iTestCase)
+	{
+	case 0:break;
+	case 1: m_iIntegrator = EULER; break;
+	case 2: m_iIntegrator = MIDPOINT; break;
+	case 3:
+		TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
+		break;
+	default:break;
+	}
 }
 
 void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 {
+	m_iTestCase = testCase;
+	m_fMass = 10.0;
+	m_fStiffness = 40.0;
+	m_fDamping = 0.0;
+
 	switch (testCase) {
 	case 0:
+		// set the scene
+		initTaskScene();
+		calcAndApplyInternalForce();
+		integrateEuler(0.1);
+		std::cout << "After Euler" << std::endl;
+		printState();
+		// set the scene
+		initTaskScene();
+		calcAndApplyInternalForce();
+		integrateMidpoint(0.1);
+		std::cout << "After Midpoint" << std::endl;
+		printState();
+		// empty scene after printing
 		m_vMassPoints.clear();
 		m_vSprings.clear();
-		m_fMass = 10.0;
-		m_fStiffness = 40.0;
-
-		// p0
-		addMassPoint(Vec3(0, 0, 0), Vec3(-1, 0, 0), false);
-		// p1 
-		addMassPoint(Vec3(0, 2, 0), Vec3(1, 0, 0), false);
-		// add spring
-		addSpring(0, 1, 1.0);
-
 		break;
+
+	case 1: case 2:
+		initTaskScene();
+		break;
+
+	case 3:
+		initRandomScene();
+		break;
+
 	default: break;
 	}
+}
+
+void MassSpringSystemSimulator::initRandomScene() {
+	setDampingFactor(1.0);
+	m_vMassPoints.clear();
+	m_vSprings.clear();
+
+	std::mt19937 eng;
+	std::uniform_real_distribution<float> randPos(-2.0f, 2.0f);
+	std::uniform_real_distribution<float> randVel(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> randLen(0.5f, 1.5f);
+
+	// add a fixed point
+	addMassPoint(Vec3(0.0, 0.0, 0.0), Vec3(), true);
+
+	for (int i = 1; i < 10; i++)
+	{
+		// add random point 
+		Vec3 pos = Vec3(randPos(eng), randPos(eng), randPos(eng));
+		Vec3 vel = Vec3(randVel(eng), randVel(eng), randVel(eng));
+		addMassPoint(pos, vel, false);
+
+		// add random springs to previous ones 
+		for (int j = 0; j < i; j++) {
+			addSpring(i, j, randLen(eng));
+		}
+	}
+}
+
+void MassSpringSystemSimulator::initTaskScene()
+{
+	m_vMassPoints.clear();
+	m_vSprings.clear();
+	// p0
+	addMassPoint(Vec3(0, 0, 0), Vec3(-1, 0, 0), false);
+	// p1 
+	addMassPoint(Vec3(0, 2, 0), Vec3(1, 0, 0), false);
+	// add spring
+	addSpring(0, 1, 1.0);
 }
 
 void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
 	m_externalForce = Vec3(); // for now
 }
 
+void MassSpringSystemSimulator::printState() {
+	int idx = 0;
+
+	for (Point& p : m_vMassPoints) {
+		Vec3 pos = p.position;
+		Vec3 vel = p.velocity;
+
+		std::cout << "Point " << idx << ":\n";
+		std::cout << "	Position: (" << pos.x << ", " << pos.y << ", " << pos.z << ")\n";
+		std::cout << "	Velocity: (" << vel.x << ", " << vel.y << ", " << vel.z << ")\n";
+
+		idx++;
+	}
+}
+
 void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	externalForcesCalculations(timeStep);
 	applyExternalForce(m_externalForce);
-	calcAndApplyElasticForce();
+	calcAndApplyInternalForce();
 
 	switch (m_iIntegrator) {
 	case EULER: integrateEuler(timeStep); break;
@@ -70,16 +151,14 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	}
 }
 
-
-
 void MassSpringSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext) {
 	for (Point& p : m_vMassPoints) {
 		DUC->drawSphere(p.position, SPHERESIZE);
 	}
 
 	for (Spring& s : m_vSprings) {
-		Vec3 pos1 = m_vMassPoints[s.point1].position;
-		Vec3 pos2 = m_vMassPoints[s.point2].position;
+		Vec3 pos1 = getPositionOfMassPoint(s.point1);
+		Vec3 pos2 = getPositionOfMassPoint(s.point2);
 
 		DUC->beginLine();
 		DUC->drawLine(pos1, RED, pos2, BLUE);
@@ -143,11 +222,16 @@ void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
 	}
 }
 
-void MassSpringSystemSimulator::calcAndApplyElasticForce()
+void MassSpringSystemSimulator::calcAndApplyInternalForce()
 {
 	for (Spring& s : m_vSprings) {
 		s.computeElasticForces(m_vMassPoints);
 		s.addToEndPoints(m_vMassPoints);
+	}
+
+	for (Point& p : m_vMassPoints) {
+		Vec3 dampForce = (-m_fDamping) * p.velocity;
+		p.addForce(dampForce);
 	}
 }
 
@@ -187,9 +271,9 @@ void MassSpringSystemSimulator::integrateMidpoint(float timeStep)
 	integrateEuler(timeStep / 2.0);
 
 	// recalculate forces in midpoint
-	externalForcesCalculations(timeStep);
+	externalForcesCalculations(timeStep / 2.0);
 	applyExternalForce(m_externalForce);
-	calcAndApplyElasticForce();
+	calcAndApplyInternalForce();
 
 	// use midpoint values to integrate
 	int idx = 0;
