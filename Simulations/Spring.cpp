@@ -13,9 +13,8 @@ void Spring::computeElasticForces(const std::vector<Point>& points) {
 	Point p1 = points[point1];
 	Point p2 = points[point2];
 
-	Vec3 diff = p1.position - p2.position;
 	float l = p1.distance(p2);
-	Vec3 direction = diff / l;
+	Vec3 direction = p1.direction(p2);
 
 	float force = -stiffness * (l - initialLength);
 

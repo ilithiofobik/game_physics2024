@@ -9,15 +9,16 @@ public:
 	// Construtors
 	Point(Vec3 p, Vec3 v, float m, float d, bool isF);
 
+	bool isFixed;
+	float damping;
+	float mass;
+	Vec3 force;
 	Vec3 position;
 	Vec3 velocity;
-	Vec3 force;
-	float mass;
-	float damping;
-	bool isFixed;
 
 	float distance(const Point& another);
-	void clearForce();
+	Vec3 direction(const Point& another);
 	void addForce(const Vec3& newForce);
+	void clearForce();
 };
 #endif
