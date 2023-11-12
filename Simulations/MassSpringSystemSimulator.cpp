@@ -6,7 +6,7 @@
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_externalForce = Vec3();
 	m_fDamping = 0.0;
-	m_fFloorLevel = -1.0;
+	m_fFloorLevel = -.3;
 	m_fMass = 1.0;
 	m_fSphereSize = 0.02;
 	m_fStiffness = 10.0;
