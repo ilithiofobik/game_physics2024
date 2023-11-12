@@ -17,6 +17,7 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_mouse.x = m_mouse.y = 0;
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
+	m_fFloorBounciness = 0.25;
 };
 
 // UI Functions
@@ -27,7 +28,7 @@ const char* MassSpringSystemSimulator::getTestCasesStr() {
 		Demo 3 = exercise example with Midpoint
 		Demo 4 = cloth simulation
 	*/
-	return "Demo 1, Demo 2, Demo 3, Demo 4";
+	return "Demo 1, Demo 2, Demo 3, Demo 4, Reflection Test";
 }
 
 void MassSpringSystemSimulator::reset() {
@@ -49,12 +50,16 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	case 1: m_iIntegrator = EULER; break;
 	case 2: m_iIntegrator = MIDPOINT; break;
 	case 3:
-		TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
+		
 		TwAddVarRW(DUC->g_pTweakBar, "Wind (Force)", TW_TYPE_FLOAT, &m_fWindForce, "min=0.0 step=0.05");
 		break;
-	default: break;
+	default:
+	break;
 	}
 
+	TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
+	TwAddVarRW(DUC->g_pTweakBar, "Floor Level", TW_TYPE_FLOAT, &m_fFloorLevel, "min=-1.0 step=0.1");
+	TwAddVarRW(DUC->g_pTweakBar, "Floor Bounciness", TW_TYPE_FLOAT, &m_fFloorBounciness, "min=0.0 step=0.05");
 	TwAddVarRW(DUC->g_pTweakBar, "Sphere Size", TW_TYPE_FLOAT, &m_fSphereSize, "min=0.01 step=0.001");
 }
 
@@ -88,7 +93,12 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 	case 3:
 		initClothScene();
 		break;
-
+	case 4:
+		m_fFloorLevel = -.3;
+		m_iIntegrator = MIDPOINT;
+		m_gravity = Vec3(0, -9.81, 0);
+		addMassPoint(Vec3(), Vec3(), false);
+		break;
 	default: break;
 	}
 }
@@ -101,6 +111,7 @@ void MassSpringSystemSimulator::initClothScene() {
 	m_externalForce = Vec3(0, 0, 0);
 	m_fSphereSize = 5.0 / (n * n);
 	m_gravity = Vec3(0, -9.81, 0);
+	m_fFloorLevel = -.3;
 	setDampingFactor(4.0 / (n * n));
 	setMass(0.01f);
 	setStiffness(40.0f);
@@ -151,6 +162,7 @@ void MassSpringSystemSimulator::initTaskScene()
 	m_fStiffness = 40.0;
 	m_fWindForce = 0;
 	m_gravity = Vec3(0, 0, 0);
+	m_fFloorLevel = -.3;
 
 	setMass(10.0f);
 	setDampingFactor(0);
@@ -321,7 +333,25 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 
 	for (Point& p : m_vMassPoints) {
 		if (p.position.y < m_fFloorLevel) {
-			p.position.y = m_fFloorLevel;
+
+			//is this really worth the calculation effort?
+			if (std::abs(p.velocity.y) > 0.00001f) //some magic number, I do not want reflections when this means dividing by a very small number
+			{
+				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
+				float t = (m_fFloorLevel-oldPos.y) / p.velocity.y;
+				oldPos += t * p.velocity;
+				p.position = oldPos;
+				Vec3 normal = Vec3(0, 1, 0); // that is the normal of the floor
+				p.velocity = m_fFloorBounciness*(2.0*GamePhysics::dot(normal, -p.velocity)*normal + p.velocity); //perfect reflection direction, is this really worth the trouble?
+				
+			}
+			else
+			{
+				p.position.y = m_fFloorLevel;
+			}
+			
+			
+
 		}
 		// TODO: change velocity after collision
 	}
