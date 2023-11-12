@@ -1,7 +1,6 @@
 #include "MassSpringSystemSimulator.h"
 #include "math.h"
 
-extern float g_fTimestep; //evil, but how should I change the timestep for the different Demos, without access to this variable?
 
 // Constructors
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
@@ -138,7 +137,6 @@ void MassSpringSystemSimulator::initClothScene() {
 		}
 	}
 
-	g_fTimestep = 0.001;
 	m_fWindForce = 0.1;
 	m_iIntegrator = MIDPOINT;
 }
@@ -153,7 +151,6 @@ void MassSpringSystemSimulator::initTaskScene()
 	m_fStiffness = 40.0;
 	m_fWindForce = 0;
 	m_gravity = Vec3(0, 0, 0);
-	g_fTimestep = 0.005;
 
 	setMass(10.0f);
 	setDampingFactor(0);
@@ -165,7 +162,26 @@ void MassSpringSystemSimulator::initTaskScene()
 }
 
 void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
-	// TODO: add mouse movement forces
+
+	m_externalForce = Vec3();
+
+	// copy paste from example
+	Point2D mouseDiff;
+	mouseDiff.x = m_trackmouse.x - m_oldtrackmouse.x;
+	mouseDiff.y = m_trackmouse.y - m_oldtrackmouse.y;
+	if (mouseDiff.x != 0 || mouseDiff.y != 0)
+	{
+		Mat4 worldViewInv = Mat4(DUC->g_camera.GetWorldMatrix() * DUC->g_camera.GetViewMatrix());
+		worldViewInv = worldViewInv.inverse();
+		Vec3 inputView = Vec3((float)mouseDiff.x, (float)-mouseDiff.y, 0);
+		Vec3 inputWorld = worldViewInv.transformVectorNormal(inputView);
+		// find a proper scale!
+		float inputScale = 0.001f;
+		inputWorld = inputWorld * inputScale;
+		m_externalForce += m_externalForce + inputWorld;
+	}
+
+	//copy past end
 
 	static float t = 0.0;
 
@@ -177,7 +193,7 @@ void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
 
 	switch (m_iTestCase) {
 	case 3:
-		m_externalForce = Vec3(1, 0, 0) * m_fWindForce * std::abs(std::sin(t * 2.0));
+		m_externalForce += Vec3(1, 0, 0) * m_fWindForce * std::abs(std::sin(t * 2.0));
 		break;
 	default: break;
 	}
