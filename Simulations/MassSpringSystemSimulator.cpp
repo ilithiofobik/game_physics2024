@@ -18,6 +18,7 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	m_fFloorBounciness = 0.25;
+	m_fFloorFriction = 0.9; //balls should not roll forever, if they touch the ground, call me crazy, but I just do not like that
 };
 
 // UI Functions
@@ -336,8 +337,7 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	for (Point& p : m_vMassPoints) {
 		if (p.position.y < m_fFloorLevel) {
 
-			//is this really worth the calculation effort?
-			if (std::abs(p.velocity.y) > 0.00001f) //some magic number, I do not want reflections when this means dividing by a very small number
+			if (2*(m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
 			{
 				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
 				float t = (m_fFloorLevel-oldPos.y) / p.velocity.y;
@@ -347,6 +347,9 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 			}
 			else
 			{
+				p.velocity.y = 0 ;
+				p.velocity.x *= m_fFloorFriction;
+				p.velocity.z *= m_fFloorFriction;
 				p.position.y = m_fFloorLevel;
 			}
 			
