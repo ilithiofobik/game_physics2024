@@ -18,7 +18,6 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	m_fFloorBounciness = 0.25;
-	m_fFloorFriction = 0.9; //balls should not roll forever, if they touch the ground, call me crazy, but I just do not like that
 };
 
 // UI Functions
@@ -348,8 +347,6 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 			else
 			{
 				p.velocity.y = 0 ;
-				p.velocity.x *= m_fFloorFriction;
-				p.velocity.z *= m_fFloorFriction;
 				p.position.y = m_fFloorLevel;
 			}
 			

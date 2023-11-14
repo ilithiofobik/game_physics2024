@@ -63,7 +63,6 @@ private:
 	float m_fStiffness;
 	float m_fWindForce;
 	float m_fFloorBounciness;
-	float m_fFloorFriction;
 	int m_iIntegrator;
 	Vec3 m_externalForce;
 	Vec3 m_gravity;
