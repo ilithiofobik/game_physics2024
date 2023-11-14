@@ -94,10 +94,12 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 		initClothScene();
 		break;
 	case 4:
+		reset();
 		m_fFloorLevel = -.3;
 		m_iIntegrator = MIDPOINT;
 		m_gravity = Vec3(0, -9.81, 0);
-		addMassPoint(Vec3(), Vec3(), false);
+		m_fFloorBounciness = 0.9;
+		addMassPoint(Vec3(-1,0,0), Vec3(1,0,0), false);
 		break;
 	default: break;
 	}
@@ -340,10 +342,8 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
 				float t = (m_fFloorLevel-oldPos.y) / p.velocity.y;
 				oldPos += t * p.velocity;
-				p.position = oldPos;
-				Vec3 normal = Vec3(0, 1, 0); // that is the normal of the floor
-				p.velocity = m_fFloorBounciness*(2.0*GamePhysics::dot(normal, -p.velocity)*normal + p.velocity); //perfect reflection direction, is this really worth the trouble?
-				
+				p.velocity = m_fFloorBounciness*Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+				p.position = oldPos + (timeStep - t) * p.velocity;
 			}
 			else
 			{
