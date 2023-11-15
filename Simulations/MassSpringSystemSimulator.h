@@ -13,6 +13,9 @@ class Point
 public:
 	Vec3 position;
 	Vec3 velocity;
+	Vec3 mid_position;
+	Vec3 mid_velocity;
+	Vec3 mid_force;
 	Vec3 force;
 	Vec3 ExternalForce;
 	float mass;
@@ -73,6 +76,8 @@ private:
 	float m_fMass;
 	float m_fStiffness;
 	float m_fDamping;
+	float m_fGravity;
+	float PointsRadius;
 	int m_iIntegrator;
 
 	// UI Attributes

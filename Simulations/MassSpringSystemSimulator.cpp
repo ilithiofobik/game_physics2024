@@ -5,7 +5,9 @@ MassSpringSystemSimulator::MassSpringSystemSimulator()
 	m_fMass = 1.0f;
 	m_fStiffness = 3.0f;
 	m_fDamping = 0.5f;
+	m_fGravity = 0.5f;
 	m_externalForce = Vec3(0,-0.01,0);
+	PointsRadius = 0.05;
 
 }
 
@@ -13,7 +15,7 @@ void MassSpringSystemSimulator::drawSpringPoints()
 {
 	for (int i = 0; i < PointList.size(); i++)
 	{
-		DUC->drawSphere(PointList[i].position, Vec3(0.05, 0.05, 0.05));
+		DUC->drawSphere(PointList[i].position, Vec3(PointsRadius, PointsRadius, PointsRadius));
 	}
 }
 
@@ -38,16 +40,42 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 	TwAddVarRW(DUC->g_pTweakBar, "Mass", TW_TYPE_FLOAT, &m_fMass, "min=0.01 step=0.01");
 	TwAddVarRW(DUC->g_pTweakBar, "Stiffness", TW_TYPE_FLOAT, &m_fStiffness, "min=0.01 step=0.01");
 	TwAddVarRW(DUC->g_pTweakBar, "Damping", TW_TYPE_FLOAT, &m_fDamping, "min=0.01 step=0.01");
-	addMassPoint(Vec3(0, 0.5, 0), Vec3(0, 0, 0), true);
-	addMassPoint(Vec3(0, 0, 0), Vec3(0, 0, 0), false);
-	addMassPoint(Vec3(0, -0.2, 0), Vec3(0, 0, 0), false);
-	addMassPoint(Vec3(0.5, 0, 0), Vec3(0, 0, 0), false);
-	addMassPoint(Vec3(-0.1, -0.3, 0), Vec3(0, 0, 0), false);
-	addSpring(0, 1, 0.3);
-	addSpring(2, 1, 0.3);
-	addSpring(3, 1, 0.3);
-	addSpring(2, 4, 0.3);
-	addSpring(2, 3, 0.3);
+	TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &m_fGravity, "min=0.01 step=0.01");
+
+	addMassPoint(Vec3(0.5, 0.5, 0.5), Vec3(0, 0, 0), true);
+	addMassPoint(Vec3(0.5, 0.5, -0.5), Vec3(0, 0, 0), true);
+	addMassPoint(Vec3(-0.5, 0.5, 0.5), Vec3(0, 0, 0), true);
+	addMassPoint(Vec3(-0.5, 0.5, -0.5), Vec3(0, 0, 0), true);
+	addMassPoint(Vec3(0.1, 0.1, 0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(0.1, 0.1, -0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(-0.1, 0.1, 0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(-0.1, 0.1, -0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(0.1, -0.1, 0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(0.1, -0.1, -0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(-0.1,-0.1, 0.1), Vec3(0, 0, 0), false);
+	addMassPoint(Vec3(-0.1, -0.1, -0.1), Vec3(0, 0, 0), false);
+	//addMassPoint(Vec3(0, 0, 0), Vec3(0, 0, 0), false);
+	//addMassPoint(Vec3(0, 0, 0), Vec3(0, 0, 0), false);
+	//addMassPoint(Vec3(0, 0, 0), Vec3(0, 0, 0), false);
+	//addMassPoint(Vec3(0, 0, 0), Vec3(0, 0, 0), false);
+
+	addSpring(0, 4, 0.3);
+	addSpring(1, 5, 0.3);
+	addSpring(2, 6, 0.3);
+	addSpring(3, 7, 0.3);
+	addSpring(4, 5, 0.3);
+	addSpring(4, 6, 0.3);
+	addSpring(6, 7, 0.3);
+	addSpring(5, 7, 0.3);
+	addSpring(8, 4, 0.5);
+	addSpring(9, 5, 0.5);
+	addSpring(10, 6, 0.5);
+	addSpring(11, 7, 0.5);
+	addSpring(8, 9, 0.5);
+	addSpring(8, 10, 0.5);
+	addSpring(10, 11, 0.5);
+	addSpring(11, 9, 0.5);
+
 }
 
 void MassSpringSystemSimulator::reset()
@@ -75,45 +103,71 @@ void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed)
 
 void MassSpringSystemSimulator::simulateTimestep(float timeStep)
 {
-	Vec3 velocity_mid = Vec3(0, 0, 0);
-	Vec3 position_mid = Vec3(0, 0, 0);
-
-	//main loop
-
+	m_externalForce = Vec3(0, -1 * m_fGravity, 0);
 	for (int i = 0; i < PointList.size(); i++)
 	{
-		PointList[i].force = Vec3(0, 0, 0);
+		PointList[i].mass = m_fMass;
+	}
+	Vec3 move = Vec3(0,0,0);
+	float extract = 0;
+	for (int i = 0; i < PointList.size(); i++)
+	{
 		PointList[i].ExternalForce = m_externalForce;
 		PointList[i].force = m_externalForce;
 
 	}
 	for (int i = 0; i < SpringList.size(); i++)
 	{
-		;
-		Vec3 move = PointList[SpringList[i].point1].position - PointList[SpringList[i].point2].position;
+		move = PointList[SpringList[i].point1].position - PointList[SpringList[i].point2].position;
 		SpringList[i].currentLength = pow(pow(move.x, 2) + pow(move.Y, 2) + pow(move.z, 2), 0.5);
-		float extract = MassSpringSystemSimulator::m_fStiffness * (SpringList[i].currentLength - SpringList[i].initialLength);
+		extract = MassSpringSystemSimulator::m_fStiffness * (SpringList[i].currentLength - SpringList[i].initialLength);
 		PointList[SpringList[i].point1].force += -1 * extract * move / SpringList[i].currentLength;
 		PointList[SpringList[i].point2].force += extract * move / SpringList[i].currentLength;
-		
 	}
-		
+	//Euler Method
 	for (int i = 0; i < PointList.size(); i++)
 	{
-		//Euler Method
 		PointList[i].velocity = PointList[i].velocity + timeStep * (PointList[i].force - m_fDamping * PointList[i].velocity) / PointList[i].mass;
 		if (!PointList[i].isFixed)
 		{	
 			PointList[i].position = PointList[i].position + timeStep * PointList[i].velocity;
+	 		if (PointList[i].position.y < (PointsRadius - 1))
+			{
+				PointList[i].position.y = PointsRadius - 1;
+			}
 		}
-		
-
-		//Midpoint Method
-		//velocity_mid = PointList[i].velocity + timeStep / 2 * (PointList[i].force - m_fDamping * PointList[i].velocity) / PointList[i].mass;
-		//position_mid = PointList[i].position + timeStep / 2 * PointList[i].velocity;
-		//PointList[i].position = PointList[i].position + timeStep * velocity_mid;
 	}
-	
+
+	//Midpoint Method
+	/*for (int i = 0; i < PointList.size(); i++)
+	{
+		PointList[i].mid_velocity = PointList[i].velocity + timeStep / 2 * (PointList[i].force - m_fDamping * PointList[i].velocity) / PointList[i].mass;
+		PointList[i].mid_position = PointList[i].position + timeStep / 2 * PointList[i].velocity;
+		if (!PointList[i].isFixed)
+		{
+			PointList[i].position = PointList[i].position + timeStep * PointList[i].mid_velocity;
+			if (PointList[i].position.y < (PointsRadius - 1))
+			{
+				PointList[i].position.y = PointsRadius - 1;
+			}
+		}
+	}
+	for (int i = 0; i < PointList.size(); i++)
+	{
+		PointList[i].mid_force = m_externalForce;
+	}
+	for (int i = 0; i < SpringList.size(); i++)
+	{
+		move = PointList[SpringList[i].point1].mid_position - PointList[SpringList[i].point2].mid_position;
+		SpringList[i].currentLength = pow(pow(move.x, 2) + pow(move.Y, 2) + pow(move.z, 2), 0.5);
+		extract = MassSpringSystemSimulator::m_fStiffness * (SpringList[i].currentLength - SpringList[i].initialLength);
+		PointList[SpringList[i].point1].mid_force += -1 * extract * move / SpringList[i].currentLength;
+		PointList[SpringList[i].point2].mid_force += extract * move / SpringList[i].currentLength;
+	}
+	for (int i = 0; i < PointList.size(); i++)
+	{
+		PointList[i].velocity = PointList[i].velocity + timeStep * (PointList[i].mid_force - m_fDamping * PointList[i].mid_velocity) / PointList[i].mass;
+	}*/
 
 }
 
