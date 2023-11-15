@@ -8,6 +8,27 @@
 #define MIDPOINT 2
 // Do Not Change
 
+class Spring
+{
+public:
+	int point1;
+	int point2;
+	float stiffness;
+	float initialLength;
+	float currentLength;
+};
+
+class Point
+{
+public:
+	Vec3 position;
+	Vec3 velocity;
+	Vec3 force;
+	Vec3 ExternalForce;
+	float mass;
+	float damping;
+	bool isFixed;
+};
 
 class MassSpringSystemSimulator:public Simulator{
 public:
@@ -42,6 +63,9 @@ public:
 		m_iIntegrator = integrator;
 	}
 
+	vector<Spring> SpringList;
+	vector<Point> PointList;
+
 private:
 	// Data Attributes
 	float m_fMass;
@@ -54,5 +78,8 @@ private:
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
+
+
 };
+
 #endif
