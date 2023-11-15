@@ -8,16 +8,6 @@
 #define MIDPOINT 2
 // Do Not Change
 
-class Spring
-{
-public:
-	int point1;
-	int point2;
-	float stiffness;
-	float initialLength;
-	float currentLength;
-};
-
 class Point
 {
 public:
@@ -28,6 +18,16 @@ public:
 	float mass;
 	float damping;
 	bool isFixed;
+};
+
+class Spring
+{
+public:
+	int point1;
+	int point2;
+	float stiffness;
+	float initialLength;
+	float currentLength;
 };
 
 class MassSpringSystemSimulator:public Simulator{
@@ -57,6 +57,8 @@ public:
 	Vec3 getPositionOfMassPoint(int index);
 	Vec3 getVelocityOfMassPoint(int index);
 	void applyExternalForce(Vec3 force);
+	void drawSpringPoints();
+	void drawSprings();
 	
 	// Do Not Change
 	void setIntegrator(int integrator) {
@@ -81,5 +83,7 @@ private:
 
 
 };
+
+
 
 #endif
