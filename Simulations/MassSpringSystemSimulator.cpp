@@ -16,6 +16,7 @@ void workerLoop(MassSpringSystemSimulator* object)
 		{
 			o.func(i);
 		}
+		
 		++o.m_iJobsDone;
 		if (o.m_iJobsDone == o.m_iNumberOfJobsToDo)
 		{
@@ -42,8 +43,9 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_brunning = true;
 	m_iJobsDone = 0;
 	m_iJobsTaken = 0;
-	m_vPointPartition = std::vector<std::vector<int>>{};
-	jobQueue = &m_vPointPartition; // it would be a problem if this Pointer does not always have a valid value
+	m_PointPartition = std::vector<std::vector<int>>{};
+	m_SpringPartition = std::vector<std::vector<std::vector<int>>>{};
+	jobQueue = &m_PointPartition; // it would be a problem if this Pointer does not always have a valid value
 	m_externalForce = Vec3();
 	m_fDamping = 0.0;
 	m_fFloorLevel = -.3;
@@ -60,6 +62,11 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_fFloorBounciness = 0.25;
 	m_iJobsDone = 0;
 	m_iWorkerNumber = std::max(std::thread::hardware_concurrency(), 1u);
+	//testing with my CPU showed me, that too many threads are a waste
+	//probably because the problem is too small
+	//so it would be optimal if the number of threads would change dynamically with the problem size,
+	//but who got time for that
+	m_iWorkerNumber = 2;
 	//std::cout << "Worker number = " << m_iWorkerNumber<< std::endl;
 	func = [](int i) {std::cout << i << std::endl; };
 	for (int i = 0; i < m_iWorkerNumber; i++)
@@ -78,17 +85,17 @@ MassSpringSystemSimulator::~MassSpringSystemSimulator()
 }
 void MassSpringSystemSimulator::PartitionPoints()
 {
-	m_vPointPartition = std::vector<std::vector<int>>{};
+	m_PointPartition = std::vector<std::vector<int>>{};
 	//this should partition the points so that there are as many sets as threads
-	m_vPointPartition;
+	m_PointPartition;
 
 	for (int i = 0; i < m_iWorkerNumber; i++)
 	{
-		m_vPointPartition.push_back( std::vector<int>{});
+		m_PointPartition.push_back( std::vector<int>{});
 	}
 	for (int i = 0; i < m_vMassPoints.size(); ++i)
 	{
-		m_vPointPartition[i % m_iWorkerNumber].push_back(i);
+		m_PointPartition[i % m_iWorkerNumber].push_back(i);
 	}
 
 }
@@ -103,6 +110,8 @@ const char* MassSpringSystemSimulator::getTestCasesStr() {
 	*/
 	return "Demo 1, Demo 2, Demo 3, Demo 4, Reflection Test";
 }
+
+
 
 void MassSpringSystemSimulator::reset() {
 	m_mouse.x = m_mouse.y = 0;
@@ -121,15 +130,11 @@ void MassSpringSystemSimulator::ThreadStuff()
 }
 
 void MassSpringSystemSimulator::clearAllForces() {
-	for (Point& point : m_vMassPoints) {
-		point.clearForce();
-	}
+	m_gravity = Vec3();
 }
 
 void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
-	for (Point& p : m_vMassPoints) {
-		p.addForce(force + (p.mass * m_gravity));
-	}
+	m_gravity = force;
 }
 
 void MassSpringSystemSimulator::calcAndApplyInternalForce()
@@ -147,10 +152,57 @@ void MassSpringSystemSimulator::calcAndApplyInternalForce()
 
 void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
 {
-	clearAllForces();
+	//clearAllForces();
 	externalForcesCalculations(timeStep);
-	applyExternalForce(m_externalForce);
+
+	for (auto& p : m_vMassPoints)
+	{
+		p.force = m_externalForce + (p.mass * m_gravity);
+	}
+	//too slow for our number of points
+	/*MassSpringSystemSimulator::FillJobQueue([this] (int index)
+		{
+			auto& p = m_vMassPoints[index];
+		p.force = m_externalForce + (p.mass * m_gravity);
+		}, m_PointPartition);*/
+
 	calcAndApplyInternalForce();
+}
+
+void MassSpringSystemSimulator::externalForcesCalculations(float timeStep) {
+		m_externalForce = Vec3();
+		// copy paste from example
+		Point2D mouseDiff;
+		mouseDiff.x = m_trackmouse.x - m_oldtrackmouse.x;
+		mouseDiff.y = m_trackmouse.y - m_oldtrackmouse.y;
+		if (mouseDiff.x != 0 || mouseDiff.y != 0)
+		{
+			Mat4 worldViewInv = Mat4(DUC->g_camera.GetWorldMatrix() * DUC->g_camera.GetViewMatrix());
+			worldViewInv = worldViewInv.inverse();
+			Vec3 inputView = Vec3((float)mouseDiff.x, (float)-mouseDiff.y, 0);
+			Vec3 inputWorld = worldViewInv.transformVectorNormal(inputView);
+			// find a proper scale!
+			float inputScale = 0.001f;
+			inputWorld = inputWorld * inputScale;
+			m_externalForce += m_externalForce + inputWorld;
+		}
+
+		//copy past end
+
+		static float t = 0.0;
+
+		t += timeStep;
+
+		if (t > 2.0 * M_PI) {
+			t -= 2.0 * M_PI;
+		}
+
+		switch (m_iTestCase) {
+		case 3:
+			m_externalForce += Vec3(1, 0, 0) * m_fWindForce * std::abs(std::sin(t * 2.0));
+			break;
+		default: break;
+		}
 }
 
 
@@ -162,10 +214,8 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	default: break;
 	}
 
-
-	//that is one big statement!
-	MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
-		Point& p = m_vMassPoints[index];
+	for (auto& p : m_vMassPoints)
+	{
 		if (p.position.y < m_fFloorLevel) {
 
 			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
@@ -182,7 +232,27 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 				p.position.y = m_fFloorLevel;
 			}
 		}
-		}, m_vPointPartition);
+	}
+	
+	//MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
+	//	Point& p = m_vMassPoints[index];
+	//	if (p.position.y < m_fFloorLevel) {
+
+	//		if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
+	//		{
+	//			Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
+	//			float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
+	//			oldPos += t * p.velocity;
+	//			p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+	//			p.position = oldPos + (timeStep - t) * p.velocity;
+	//		}
+	//		else
+	//		{
+	//			p.velocity.y = 0;
+	//			p.position.y = m_fFloorLevel;
+	//		}
+	//	}
+	//	}, m_PointPartition);
 
 }
 
@@ -377,43 +447,6 @@ void MassSpringSystemSimulator::initTaskScene()
 	addSpring(0, 1, 1.0f);
 }
 
-void MassSpringSystemSimulator::externalForcesCalculations(float timeElapsed) {
-
-	m_externalForce = Vec3();
-
-	// copy paste from example
-	Point2D mouseDiff;
-	mouseDiff.x = m_trackmouse.x - m_oldtrackmouse.x;
-	mouseDiff.y = m_trackmouse.y - m_oldtrackmouse.y;
-	if (mouseDiff.x != 0 || mouseDiff.y != 0)
-	{
-		Mat4 worldViewInv = Mat4(DUC->g_camera.GetWorldMatrix() * DUC->g_camera.GetViewMatrix());
-		worldViewInv = worldViewInv.inverse();
-		Vec3 inputView = Vec3((float)mouseDiff.x, (float)-mouseDiff.y, 0);
-		Vec3 inputWorld = worldViewInv.transformVectorNormal(inputView);
-		// find a proper scale!
-		float inputScale = 0.001f;
-		inputWorld = inputWorld * inputScale;
-		m_externalForce += m_externalForce + inputWorld;
-	}
-
-	//copy past end
-
-	static float t = 0.0;
-
-	t += timeElapsed;
-
-	if (t > 2.0 * M_PI) {
-		t -= 2.0 * M_PI;
-	}
-
-	switch (m_iTestCase) {
-	case 3:
-		m_externalForce += Vec3(1, 0, 0) * m_fWindForce * std::abs(std::sin(t * 2.0));
-		break;
-	default: break;
-	}
-}
 
 void MassSpringSystemSimulator::printState() {
 	int idx = 0;

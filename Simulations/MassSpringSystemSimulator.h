@@ -83,7 +83,8 @@ private:
 
 	//thread stuff
 	public: //I think I am doing something wrong with my program structure and have to make these public
-	std::vector<std::vector<int>> m_vPointPartition;
+	std::vector<std::vector<int>> m_PointPartition;
+	std::vector<std::vector<std::vector<int>>> m_SpringPartition;
 	std::atomic<int> m_iJobsDone;
 	int m_iJobsTaken;
 	int m_iNumberOfJobsToDo;
