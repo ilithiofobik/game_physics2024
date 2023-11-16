@@ -5,26 +5,45 @@
 void workerLoop(MassSpringSystemSimulator* object)
 {
 	auto &  o = *object;
-	while (true)
+	while (o.m_brunning)
 	{
 		std::unique_lock<std::mutex> lock(o.mutexForAccessToQueue);
-		o.cv.wait(lock, [&o] {return !o.jobQueue.empty(); });
-		auto p = std::move(o.jobQueue.back());
-		o.jobQueue.pop_back();
+		o.cv.wait(lock, [&o] {return !(o.m_iJobsTaken == o.jobQueue->size()); });
+		const auto& p = (*(o.jobQueue))[o.m_iJobsTaken];
+		++o.m_iJobsTaken;
 		lock.unlock();
-		for (auto i : p)
+		for (const auto i : p)
 		{
 			o.func(i);
 		}
-		o.m_iJobsDone += 1;
+		++o.m_iJobsDone;
 		if (o.m_iJobsDone == o.m_iNumberOfJobsToDo)
 		{
 			o.cv2.notify_all();
 		}
 	}
 }
+
+void MassSpringSystemSimulator::FillJobQueue(std::function<void(int)> f, const std::vector<std::vector<int>>& v)
+{
+	std::unique_lock<std::mutex> lock(mutexForAccessToQueue);
+	func = f;
+	jobQueue = &v;
+	m_iJobsDone = 0;
+	m_iJobsTaken = 0;
+	m_iNumberOfJobsToDo = jobQueue->size();
+	cv.notify_all();
+	cv2.wait(lock, [this]() { return m_iJobsDone == m_iNumberOfJobsToDo; });
+	lock.unlock();
+}
+
 // Constructors
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
+	m_brunning = true;
+	m_iJobsDone = 0;
+	m_iJobsTaken = 0;
+	m_vPointPartition = std::vector<std::vector<int>>{};
+	jobQueue = &m_vPointPartition; // it would be a problem if this Pointer does not always have a valid value
 	m_externalForce = Vec3();
 	m_fDamping = 0.0;
 	m_fFloorLevel = -.3;
@@ -45,9 +64,17 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	func = [](int i) {std::cout << i << std::endl; };
 	for (int i = 0; i < m_iWorkerNumber; i++)
 	{
-		workers.push_back(std::thread(workerLoop,this)); //todo what happens if the program ends prematurely?
+		m_Workers.push_back(std::thread(workerLoop,this)); //todo what happens if the program ends prematurely?
 	}
 
+}
+MassSpringSystemSimulator::~MassSpringSystemSimulator()
+{
+	m_brunning = false;
+	for (auto& t : m_Workers)
+	{
+		t.join();
+	}
 }
 void MassSpringSystemSimulator::PartitionPoints()
 {
@@ -86,6 +113,134 @@ void MassSpringSystemSimulator::reset() {
 	m_vSprings.clear();
 }
 
+
+
+void MassSpringSystemSimulator::ThreadStuff()
+{
+	PartitionPoints();
+}
+
+void MassSpringSystemSimulator::clearAllForces() {
+	for (Point& point : m_vMassPoints) {
+		point.clearForce();
+	}
+}
+
+void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
+	for (Point& p : m_vMassPoints) {
+		p.addForce(force + (p.mass * m_gravity));
+	}
+}
+
+void MassSpringSystemSimulator::calcAndApplyInternalForce()
+{
+	for (Spring& s : m_vSprings) {
+		s.computeElasticForces(m_vMassPoints);
+		s.addToEndPoints(m_vMassPoints);
+	}
+
+	for (Point& p : m_vMassPoints) {
+		Vec3 dampForce = (-m_fDamping) * p.velocity;
+		p.addForce(dampForce);
+	}
+}
+
+void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
+{
+	clearAllForces();
+	externalForcesCalculations(timeStep);
+	applyExternalForce(m_externalForce);
+	calcAndApplyInternalForce();
+}
+
+
+void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
+	switch (m_iIntegrator) {
+	case EULER: integrateEuler(timeStep); break;
+	case LEAPFROG: integrateLeapFrog(timeStep); break;
+	case MIDPOINT: integrateMidpoint(timeStep); break;
+	default: break;
+	}
+
+
+	//that is one big statement!
+	MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
+		Point& p = m_vMassPoints[index];
+		if (p.position.y < m_fFloorLevel) {
+
+			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
+			{
+				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
+				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
+				oldPos += t * p.velocity;
+				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+				p.position = oldPos + (timeStep - t) * p.velocity;
+			}
+			else
+			{
+				p.velocity.y = 0;
+				p.position.y = m_fFloorLevel;
+			}
+		}
+		}, m_vPointPartition);
+
+}
+
+void MassSpringSystemSimulator::integrateEuler(float timeStep)
+{
+	calcAndApplyAllForce(timeStep);
+
+	for (Point& p : m_vMassPoints) {
+		if (!p.isFixed) {
+			p.position += p.velocity * timeStep;
+			p.velocity += (p.force / p.mass) * timeStep;
+		}
+	}
+}
+
+void MassSpringSystemSimulator::integrateLeapFrog(float timeStep)
+{
+	calcAndApplyAllForce(timeStep);
+
+	for (Point& p : m_vMassPoints) {
+		if (!p.isFixed) {
+			p.velocity += (p.force / p.mass) * timeStep;
+			p.position += p.velocity * timeStep;
+		}
+	}
+}
+
+void MassSpringSystemSimulator::integrateMidpoint(float timeStep)
+{
+	calcAndApplyAllForce(timeStep);
+
+	// save old states
+	int numOfPoints = m_vMassPoints.size();
+	vector<Vec3> oldPositions(numOfPoints);
+	vector<Vec3> oldVelocities(numOfPoints);
+
+	for (int i = 0; i < numOfPoints; i++) {
+		oldPositions[i] = getPositionOfMassPoint(i);
+		oldVelocities[i] = getVelocityOfMassPoint(i);
+	}
+
+	// half Euler to go to the midpoint
+	integrateEuler(timeStep * 0.5);
+
+	// recalculate forces in midpoint
+	calcAndApplyAllForce(timeStep * 0.5);
+
+	// use midpoint values to integrate
+	int idx = 0;
+	for (Point& p : m_vMassPoints) {
+		if (!p.isFixed) {
+			p.position = oldPositions[idx] + p.velocity * timeStep;
+			p.velocity = oldVelocities[idx] + (p.force / p.mass) * timeStep;
+		}
+		idx++;
+	}
+}
+
 void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 	TwType TW_TYPE_INTEGRATOR = TwDefineEnumFromString("Integrator", "Euler, LeapFrog, Midpoint");
@@ -96,11 +251,11 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	case 1: m_iIntegrator = EULER; break;
 	case 2: m_iIntegrator = MIDPOINT; break;
 	case 3:
-		
+
 		TwAddVarRW(DUC->g_pTweakBar, "Wind (Force)", TW_TYPE_FLOAT, &m_fWindForce, "min=0.0 step=0.05");
 		break;
 	default:
-	break;
+		break;
 	}
 
 	TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
@@ -145,18 +300,12 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 		m_iIntegrator = MIDPOINT;
 		m_gravity = Vec3(0, -9.81, 0);
 		m_fFloorBounciness = 0.9;
-		addMassPoint(Vec3(-1,0,0), Vec3(1,0,0), false);
+		addMassPoint(Vec3(-1, 0, 0), Vec3(1, 0, 0), false);
 		break;
 	default: break;
 	}
 	ThreadStuff();
 }
-
-void MassSpringSystemSimulator::ThreadStuff()
-{
-	PartitionPoints();
-}
-
 
 void MassSpringSystemSimulator::initClothScene() {
 	reset();
@@ -345,134 +494,3 @@ Vec3 MassSpringSystemSimulator::getVelocityOfMassPoint(int index) {
 	return m_vMassPoints[index].velocity;
 }
 
-void MassSpringSystemSimulator::clearAllForces() {
-	for (Point& point : m_vMassPoints) {
-		point.clearForce();
-	}
-}
-
-void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
-	for (Point& p : m_vMassPoints) {
-		p.addForce(force + (p.mass * m_gravity));
-	}
-}
-
-void MassSpringSystemSimulator::calcAndApplyInternalForce()
-{
-	for (Spring& s : m_vSprings) {
-		s.computeElasticForces(m_vMassPoints);
-		s.addToEndPoints(m_vMassPoints);
-	}
-
-	for (Point& p : m_vMassPoints) {
-		Vec3 dampForce = (-m_fDamping) * p.velocity;
-		p.addForce(dampForce);
-	}
-}
-
-void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
-{
-	clearAllForces();
-	externalForcesCalculations(timeStep);
-	applyExternalForce(m_externalForce);
-	calcAndApplyInternalForce();
-}
-
-void MassSpringSystemSimulator::FillJobQueue(std::function<void(int)> f,  const std::vector<std::vector<int>> &v)
-{
-	std::unique_lock<std::mutex> lock(mutexForAccessToQueue);
-	func = f;
-	jobQueue = v;
-	m_iJobsDone = 0;
-	m_iNumberOfJobsToDo = jobQueue.size();
-	cv.notify_all();
-	cv2.wait(lock, [this]() { return m_iJobsDone == m_iNumberOfJobsToDo; });
-	lock.unlock();
-}
-
-void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
-	switch (m_iIntegrator) {
-	case EULER: integrateEuler(timeStep); break;
-	case LEAPFROG: integrateLeapFrog(timeStep); break;
-	case MIDPOINT: integrateMidpoint(timeStep); break;
-	default: break;
-	}
-
-	
-	//that is one big statement!
-	MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
-		Point& p = m_vMassPoints[index];
-		if (p.position.y < m_fFloorLevel) {
-
-			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
-			{
-				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
-				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
-				oldPos += t * p.velocity;
-				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
-				p.position = oldPos + (timeStep - t) * p.velocity;
-			}
-			else
-			{
-				p.velocity.y = 0;
-				p.position.y = m_fFloorLevel;
-			}
-		}
-		}, m_vPointPartition);
-	
-}
-
-void MassSpringSystemSimulator::integrateEuler(float timeStep)
-{
-	calcAndApplyAllForce(timeStep);
-
-	for (Point& p : m_vMassPoints) {
-		if (!p.isFixed) {
-			p.position += p.velocity * timeStep;
-			p.velocity += (p.force / p.mass) * timeStep;
-		}
-	}
-}
-
-void MassSpringSystemSimulator::integrateLeapFrog(float timeStep)
-{
-	calcAndApplyAllForce(timeStep);
-
-	for (Point& p : m_vMassPoints) {
-		if (!p.isFixed) {
-			p.velocity += (p.force / p.mass) * timeStep;
-			p.position += p.velocity * timeStep;
-		}
-	}
-}
-
-void MassSpringSystemSimulator::integrateMidpoint(float timeStep)
-{
-	calcAndApplyAllForce(timeStep);
-
-	// save old states
-	int numOfPoints = m_vMassPoints.size();
-	vector<Vec3> oldPositions(numOfPoints);
-	vector<Vec3> oldVelocities(numOfPoints);
-
-	for (int i = 0; i < numOfPoints; i++) {
-		oldPositions[i] = getPositionOfMassPoint(i);
-		oldVelocities[i] = getVelocityOfMassPoint(i);
-	}
-
-	// half Euler to go to the midpoint
-	integrateEuler(timeStep * 0.5);
-
-	// recalculate forces in midpoint
-	calcAndApplyAllForce(timeStep * 0.5);
-
-	// use midpoint values to integrate
-	int idx = 0;
-	for (Point& p : m_vMassPoints) {
-		if (!p.isFixed) {
-			p.position = oldPositions[idx] + p.velocity * timeStep;
-			p.velocity = oldVelocities[idx] + (p.force / p.mass) * timeStep;
-		}
-		idx++;
-	}
-}

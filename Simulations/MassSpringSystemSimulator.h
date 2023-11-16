@@ -19,6 +19,7 @@ class MassSpringSystemSimulator :public Simulator {
 public:
 	// Construtors
 	MassSpringSystemSimulator();
+	~MassSpringSystemSimulator();
 
 	// UI Functions
 	const char* getTestCasesStr();
@@ -84,9 +85,14 @@ private:
 	public: //I think I am doing something wrong with my program structure and have to make these public
 	std::vector<std::vector<int>> m_vPointPartition;
 	std::atomic<int> m_iJobsDone;
+	int m_iJobsTaken;
 	int m_iNumberOfJobsToDo;
-	std::vector<std::thread> workers;
-	std::vector<std::vector<int>> jobQueue;
+	bool m_brunning;
+	std::vector<std::thread> m_Workers;
+	//pointers are only evil, if they modify stuff, my opinion
+	//yes, the always have the problem of the object they are pointing to getting deleted,
+	//but that should not be a problem in our case
+	const std::vector<std::vector<int>> * jobQueue; //not a const pointer, a pointer to a const vector
 	std::function<void(int)> func;
 	std::mutex mutexForAccessToQueue; //anyone who wants access to the queue should have this
 	std::condition_variable cv;
