@@ -1,5 +1,8 @@
 #include "MassSpringSystemSimulator.h"
 #include "math.h"
+#include <map>
+#include <list>
+#include <cmath>
 
 
 void workerLoop(MassSpringSystemSimulator* object)
@@ -66,7 +69,7 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	//probably because the problem is too small
 	//so it would be optimal if the number of threads would change dynamically with the problem size,
 	//but who got time for that
-	m_iWorkerNumber = 2;
+	//m_iWorkerNumber = 2;
 	//std::cout << "Worker number = " << m_iWorkerNumber<< std::endl;
 	func = [](int i) {std::cout << i << std::endl; };
 	for (int i = 0; i < m_iWorkerNumber; i++)
@@ -93,11 +96,94 @@ void MassSpringSystemSimulator::PartitionPoints()
 	{
 		m_PointPartition.push_back( std::vector<int>{});
 	}
-	for (int i = 0; i < m_vMassPoints.size(); ++i)
+	int n = 0;
+	for (int j = 0; j < m_iWorkerNumber; j++)
 	{
-		m_PointPartition[i % m_iWorkerNumber].push_back(i);
+		for (int i = 0; i < (m_vMassPoints.size() / m_iWorkerNumber); ++i)
+		{
+			m_PointPartition[j].push_back(n); //this might be bad?
+			++n;
+		}
+	}
+	for (; n < m_vMassPoints.size(); ++n)
+	{
+		m_PointPartition[m_iWorkerNumber - 1].push_back(n);
+	}
+	
+
+}
+
+void MassSpringSystemSimulator::PartitionSprings()
+{
+	std::map<int, std::list<int>> firstPointFirst{};
+	std::map<int, std::list<int>> secondPointFirst{};
+	std::vector<int> p1{};
+	std::vector<int> p2{};
+
+	for (int i = 0; i < m_vMassPoints.size(); i++)
+	{
+		p1.push_back(i);
 	}
 
+	for (int i = 0; i < m_vSprings.size(); i++)
+	{
+		int p = m_vSprings[i].point1;
+		auto a = firstPointFirst.find(p);
+		if (a != firstPointFirst.end())
+		{
+			a->second.push_back(p);
+		}
+		else
+		{
+			firstPointFirst[p] = std::list<int>{p};
+		}
+		p = m_vSprings[i].point2;
+		a = secondPointFirst.find(p);
+		if (a != secondPointFirst.end())
+		{
+			a->second.push_back(p);
+		}
+		else
+		{
+			secondPointFirst[p] = std::list<int>{p};
+		}
+	}
+	for (int i = 0; i < m_vSprings.size(); i++)
+	{
+		firstPointFirst[m_vSprings[i].point2].push_back(i);
+	}
+	while (p1.size() > 0)
+	{
+		
+		while (p1.size() > 0)
+		{
+			std::vector<int> v{};
+
+			int index = p1.back();
+			p1.pop_back();
+			auto a = firstPointFirst.find(index);
+			if (a != firstPointFirst.end())
+			{
+				v.insert(v.end(), a->second.begin(), a->second.end());
+				firstPointFirst[index] = std::list<int>{}; //empty this one
+			}
+			 a = secondPointFirst.find(index);
+			if (a != secondPointFirst.end())
+			{
+				v.insert(v.end(), a->second.begin(), a->second.end());
+				firstPointFirst[index] = std::list<int>{};;
+			}
+
+			for (auto i : v)
+			{
+
+			}
+
+
+		}
+		p1 = p2; //if p2 is empty this terminates obviously
+		p2 = std::vector<int>{};
+	}
 }
 
 // UI Functions
@@ -127,6 +213,7 @@ void MassSpringSystemSimulator::reset() {
 void MassSpringSystemSimulator::ThreadStuff()
 {
 	PartitionPoints();
+	PartitionSprings();
 }
 
 void MassSpringSystemSimulator::clearAllForces() {
@@ -155,16 +242,16 @@ void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
 	//clearAllForces();
 	externalForcesCalculations(timeStep);
 
-	for (auto& p : m_vMassPoints)
+	/*for (auto& p : m_vMassPoints)
 	{
 		p.force = m_externalForce + (p.mass * m_gravity);
-	}
+	}*/
 	//too slow for our number of points
-	/*MassSpringSystemSimulator::FillJobQueue([this] (int index)
+	MassSpringSystemSimulator::FillJobQueue([this] (int index)
 		{
 			auto& p = m_vMassPoints[index];
 		p.force = m_externalForce + (p.mass * m_gravity);
-		}, m_PointPartition);*/
+		}, m_PointPartition);
 
 	calcAndApplyInternalForce();
 }
@@ -214,28 +301,8 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	default: break;
 	}
 
-	for (auto& p : m_vMassPoints)
-	{
-		if (p.position.y < m_fFloorLevel) {
-
-			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
-			{
-				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
-				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
-				oldPos += t * p.velocity;
-				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
-				p.position = oldPos + (timeStep - t) * p.velocity;
-			}
-			else
-			{
-				p.velocity.y = 0;
-				p.position.y = m_fFloorLevel;
-			}
-		}
-	}
-	
-	//MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
-	//	Point& p = m_vMassPoints[index];
+	//for (auto& p : m_vMassPoints)
+	//{
 	//	if (p.position.y < m_fFloorLevel) {
 
 	//		if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
@@ -252,7 +319,27 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	//			p.position.y = m_fFloorLevel;
 	//		}
 	//	}
-	//	}, m_PointPartition);
+	//}
+	
+	MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
+		Point& p = m_vMassPoints[index];
+		if (p.position.y < m_fFloorLevel) {
+
+			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
+			{
+				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
+				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
+				oldPos += t * p.velocity;
+				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+				p.position = oldPos + (timeStep - t) * p.velocity;
+			}
+			else
+			{
+				p.velocity.y = 0;
+				p.position.y = m_fFloorLevel;
+			}
+		}
+		}, m_PointPartition);
 
 }
 

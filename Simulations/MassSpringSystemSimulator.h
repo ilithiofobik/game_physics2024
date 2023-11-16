@@ -61,6 +61,7 @@ public:
 private:
 	void ThreadStuff();
 	void PartitionPoints();
+	void PartitionSprings();
 	void FillJobQueue(std::function<void(int)>, const std::vector<std::vector<int>>& v);
 	int m_iWorkerNumber;
 	// Data Attributes
