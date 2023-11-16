@@ -50,11 +50,11 @@ void MassSpringSystemSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	case 1: m_iIntegrator = EULER; break;
 	case 2: m_iIntegrator = MIDPOINT; break;
 	case 3:
-		
+
 		TwAddVarRW(DUC->g_pTweakBar, "Wind (Force)", TW_TYPE_FLOAT, &m_fWindForce, "min=0.0 step=0.05");
 		break;
 	default:
-	break;
+		break;
 	}
 
 	TwAddVarRW(DUC->g_pTweakBar, "Integrator", TW_TYPE_INTEGRATOR, &m_iIntegrator, "");
@@ -99,7 +99,7 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 		m_iIntegrator = MIDPOINT;
 		m_gravity = Vec3(0, -9.81, 0);
 		m_fFloorBounciness = 0.9;
-		addMassPoint(Vec3(-1,0,0), Vec3(1,0,0), false);
+		addMassPoint(Vec3(-1, 0, 0), Vec3(1, 0, 0), false);
 		break;
 	default: break;
 	}
@@ -335,25 +335,20 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 
 	for (Point& p : m_vMassPoints) {
 		if (p.position.y < m_fFloorLevel) {
-
-			if (2*(m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
+			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
 			{
 				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
-				float t = (m_fFloorLevel-oldPos.y) / p.velocity.y;
+				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
 				oldPos += t * p.velocity;
-				p.velocity = m_fFloorBounciness*Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
 				p.position = oldPos + (timeStep - t) * p.velocity;
 			}
 			else
 			{
-				p.velocity.y = 0 ;
+				p.velocity.y = 0;
 				p.position.y = m_fFloorLevel;
 			}
-			
-			
-
 		}
-		// TODO: change velocity after collision
 	}
 }
 
