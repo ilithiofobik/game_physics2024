@@ -3,6 +3,8 @@
 #include "Simulator.h"
 #include "Point.h"
 #include "Spring.h"
+#include <thread>
+#include <mutex>
 
 // Do Not Change
 #define EULER 0
@@ -56,6 +58,10 @@ public:
 	}
 
 private:
+	void ThreadStuff();
+	void PartitionPoints();
+	void FillJobQueue(std::function<void(int)>, const std::vector<std::vector<int>>& v);
+	int m_iWorkerNumber;
 	// Data Attributes
 	float m_fDamping;
 	float m_fFloorLevel;
@@ -68,11 +74,22 @@ private:
 	Vec3 m_gravity;
 	vector<Point> m_vMassPoints;
 	vector<Spring> m_vSprings;
-
 	// UI Attributes
 	Point2D m_mouse;
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
 	float m_fSphereSize;
+
+	//thread stuff
+	public: //I think I am doing something wrong with my program structure and have to make these public
+	std::vector<std::vector<int>> m_vPointPartition;
+	std::atomic<int> m_iJobsDone;
+	int m_iNumberOfJobsToDo;
+	std::vector<std::thread> workers;
+	std::vector<std::vector<int>> jobQueue;
+	std::function<void(int)> func;
+	std::mutex mutexForAccessToQueue; //anyone who wants access to the queue should have this
+	std::condition_variable cv;
+	std::condition_variable cv2;
 };
 #endif

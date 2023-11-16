@@ -2,6 +2,27 @@
 #include "math.h"
 
 
+void workerLoop(MassSpringSystemSimulator* object)
+{
+	auto &  o = *object;
+	while (true)
+	{
+		std::unique_lock<std::mutex> lock(o.mutexForAccessToQueue);
+		o.cv.wait(lock, [&o] {return !o.jobQueue.empty(); });
+		auto p = std::move(o.jobQueue.back());
+		o.jobQueue.pop_back();
+		lock.unlock();
+		for (auto i : p)
+		{
+			o.func(i);
+		}
+		o.m_iJobsDone += 1;
+		if (o.m_iJobsDone == o.m_iNumberOfJobsToDo)
+		{
+			o.cv2.notify_all();
+		}
+	}
+}
 // Constructors
 MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_externalForce = Vec3();
@@ -18,7 +39,32 @@ MassSpringSystemSimulator::MassSpringSystemSimulator() {
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	m_fFloorBounciness = 0.25;
-};
+	m_iJobsDone = 0;
+	m_iWorkerNumber = std::max(std::thread::hardware_concurrency(), 1u);
+	//std::cout << "Worker number = " << m_iWorkerNumber<< std::endl;
+	func = [](int i) {std::cout << i << std::endl; };
+	for (int i = 0; i < m_iWorkerNumber; i++)
+	{
+		workers.push_back(std::thread(workerLoop,this)); //todo what happens if the program ends prematurely?
+	}
+
+}
+void MassSpringSystemSimulator::PartitionPoints()
+{
+	m_vPointPartition = std::vector<std::vector<int>>{};
+	//this should partition the points so that there are as many sets as threads
+	m_vPointPartition;
+
+	for (int i = 0; i < m_iWorkerNumber; i++)
+	{
+		m_vPointPartition.push_back( std::vector<int>{});
+	}
+	for (int i = 0; i < m_vMassPoints.size(); ++i)
+	{
+		m_vPointPartition[i % m_iWorkerNumber].push_back(i);
+	}
+
+}
 
 // UI Functions
 const char* MassSpringSystemSimulator::getTestCasesStr() {
@@ -103,7 +149,14 @@ void MassSpringSystemSimulator::notifyCaseChanged(int testCase)
 		break;
 	default: break;
 	}
+	ThreadStuff();
 }
+
+void MassSpringSystemSimulator::ThreadStuff()
+{
+	PartitionPoints();
+}
+
 
 void MassSpringSystemSimulator::initClothScene() {
 	reset();
@@ -325,6 +378,18 @@ void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
 	calcAndApplyInternalForce();
 }
 
+void MassSpringSystemSimulator::FillJobQueue(std::function<void(int)> f,  const std::vector<std::vector<int>> &v)
+{
+	std::unique_lock<std::mutex> lock(mutexForAccessToQueue);
+	func = f;
+	jobQueue = v;
+	m_iJobsDone = 0;
+	m_iNumberOfJobsToDo = jobQueue.size();
+	cv.notify_all();
+	cv2.wait(lock, [this]() { return m_iJobsDone == m_iNumberOfJobsToDo; });
+	lock.unlock();
+}
+
 void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	switch (m_iIntegrator) {
 	case EULER: integrateEuler(timeStep); break;
@@ -333,28 +398,28 @@ void MassSpringSystemSimulator::simulateTimestep(float timeStep) {
 	default: break;
 	}
 
-	for (Point& p : m_vMassPoints) {
+	
+	//that is one big statement!
+	MassSpringSystemSimulator::FillJobQueue([this, &timeStep](int index) {
+		Point& p = m_vMassPoints[index];
 		if (p.position.y < m_fFloorLevel) {
 
-			if (2*(m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
+			if (2 * (m_gravity * timeStep).y > p.velocity.y) //I do not want hopping balls because of gravity, so my rule of thumb is that it has to be accelerated for at least 2 time steps
 			{
 				Vec3 oldPos = p.position - timeStep * p.velocity; // is this even correct for midpoint intersection? let's just pretend it is
-				float t = (m_fFloorLevel-oldPos.y) / p.velocity.y;
+				float t = (m_fFloorLevel - oldPos.y) / p.velocity.y;
 				oldPos += t * p.velocity;
-				p.velocity = m_fFloorBounciness*Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
+				p.velocity = m_fFloorBounciness * Vec3(p.velocity.x, -p.velocity.y, p.velocity.z); //perfect reflection direction, is this really worth the trouble?
 				p.position = oldPos + (timeStep - t) * p.velocity;
 			}
 			else
 			{
-				p.velocity.y = 0 ;
+				p.velocity.y = 0;
 				p.position.y = m_fFloorLevel;
 			}
-			
-			
-
 		}
-		// TODO: change velocity after collision
-	}
+		}, m_vPointPartition);
+	
 }
 
 void MassSpringSystemSimulator::integrateEuler(float timeStep)
