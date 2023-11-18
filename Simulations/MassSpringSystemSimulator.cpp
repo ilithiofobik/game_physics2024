@@ -300,7 +300,13 @@ void MassSpringSystemSimulator::clearAllForces() {
 
 void MassSpringSystemSimulator::applyExternalForce(Vec3 force) {
 	for (Point& p : m_vMassPoints) {
-		p.addForce(force + (p.mass * m_gravity));
+		p.addForce(force);
+	}
+}
+
+void MassSpringSystemSimulator::applyGravity() {
+	for (Point& p : m_vMassPoints) {
+		p.addForce(p.mass * m_gravity);
 	}
 }
 
@@ -322,6 +328,7 @@ void MassSpringSystemSimulator::calcAndApplyAllForce(float timeStep)
 	clearAllForces();
 	externalForcesCalculations(timeStep);
 	applyExternalForce(m_externalForce);
+	applyGravity();
 	calcAndApplyInternalForce();
 }
 

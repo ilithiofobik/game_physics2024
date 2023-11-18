@@ -37,6 +37,7 @@ public:
 	Vec3 getVelocityOfMassPoint(int index);
 	void addSpring(int masspoint1, int masspoint2, float initialLength);
 	void applyExternalForce(Vec3 force);
+	void applyGravity();
 	void calcAndApplyAllForce(float timeStep);
 	void calcAndApplyInternalForce();
 	void clearAllForces();
