@@ -20,6 +20,11 @@ Vec3 RigidBodySystemSimulator::getAngularVelocityOfRigidBody(int i)
 	return m_vRigidBodies[i].ang_velocity;
 }
 
+void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force)
+{
+	m_vRigidBodies[i].addForce(loc, force);
+}
+
 void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass)
 {
 	RigidBody newBody = RigidBody(position, size, mass);
