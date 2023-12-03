@@ -12,6 +12,7 @@ public:
 
 	void addForce(const Vec3& loc, const Vec3& force);
 	void clearForce();
+	Mat4 objToWorldMatrix();
 
 	float mass;
 	Quat orientation;
@@ -21,5 +22,10 @@ public:
 	Vec3 lin_velocity;
 	Vec3 position;
 	Vec3 size;
+
+private:
+	Mat4 scaleMat();
+	Mat4 rotMat();
+	Mat4 translatMat();
 };
 #endif

@@ -79,9 +79,8 @@ void RigidBodySystemSimulator::reset()
 
 void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 {
-	for (const RigidBody& rb : m_vRigidBodies) {
-		//DUC->drawSphere(p.position, Vec3(m_fSphereSize, m_fSphereSize, m_fSphereSize));
-		// TODO: find out how to get the matrices
+	for (RigidBody& rb : m_vRigidBodies) {
+		DUC->drawRigidBody(rb.objToWorldMatrix());
 	}
 }
 
@@ -92,6 +91,7 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase)
 	switch (testCase) {
 	case 0:
 		// TODO: calculations for demo 1
+		addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
 		break;
 	case 1:
 		// TODO: init first 
