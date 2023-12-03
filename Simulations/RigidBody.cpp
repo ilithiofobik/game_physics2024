@@ -60,26 +60,28 @@ Mat4 RigidBody::objToWorldMatrix()
 	return scaleMat * rm * tm;
 }
 
-Vec3 RigidBody::invIntertia()
+Mat4 RigidBody::invIntertia()
 {
-	Mat4 rotMat = orientation.getRotMat();
-	Mat4 rotMatT = orientation.getRotMat();
-	rotMatT.transpose();
-	Mat4 ii0 = Mat4(invIntertia0.x, invIntertia0.y, invIntertia0.z);
-	Mat4 ii = rotMat * ii0 * rotMatT;
-	return Vec3(ii.value[0][0], ii.value[1][1], ii.value[2][2]);
+	Mat4 rot = rotMat();
+	Mat4 rotT = rot.inverse();
+	Mat4 ii0 = Mat4();
+	ii0.initScaling(invIntertia0.x, invIntertia0.y, invIntertia0.z);
+	return rot * ii0 * rotT;
 }
 
 void RigidBody::simulateTimestep(float timeStep)
 {
 	position += timeStep * linVel;
 	linVel += timeStep * (force / mass);
+
 	Quat w0 = Quat(angVel.x, angVel.y, angVel.z, 0.0);
 	orientation += (timeStep / 2.0) * w0 * orientation;
 	orientation = orientation.unit();
 	momentum += timeStep * torque;
+
 	angVel = invIntertia() * momentum;
-	// clearForce(); should it?
+
+	clearForce(); // should it?
 }
 
 Vec3 RigidBody::getPosition()
@@ -94,5 +96,5 @@ Vec3 RigidBody::getAngVel()
 
 void RigidBody::setOrientation(const Quat& r)
 {
-	orientation = r;
+	orientation = r.unit();
 }

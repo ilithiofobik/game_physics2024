@@ -13,7 +13,7 @@ public:
 	void addForce(const Vec3& loc, const Vec3& force);
 	void clearForce();
 	Mat4 objToWorldMatrix();
-	Vec3 invIntertia(); // current moment of inertia changes
+	Mat4 invIntertia(); // current moment of inertia changes
 	void simulateTimestep(float timeStep);
 	Vec3 getPosition();
 	Vec3 getAngVel();
