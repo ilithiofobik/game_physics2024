@@ -7,17 +7,17 @@ int RigidBodySystemSimulator::getNumberOfRigidBodies()
 
 Vec3 RigidBodySystemSimulator::getPositionOfRigidBody(int i)
 {
-	return m_vRigidBodies[i].position;
+	return m_vRigidBodies[i].getPosition();
 }
 
 Vec3 RigidBodySystemSimulator::getLinearVelocityOfRigidBody(int i)
 {
-	return m_vRigidBodies[i].lin_velocity;
+	return m_vRigidBodies[i].linVel;
 }
 
 Vec3 RigidBodySystemSimulator::getAngularVelocityOfRigidBody(int i)
 {
-	return m_vRigidBodies[i].ang_velocity;
+	return m_vRigidBodies[i].getAngVel();
 }
 
 void RigidBodySystemSimulator::applyForceOnBody(int i, Vec3 loc, Vec3 force)
@@ -33,12 +33,12 @@ void RigidBodySystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass)
 
 void RigidBodySystemSimulator::setOrientationOf(int i, Quat orientation)
 {
-	m_vRigidBodies[i].orientation = orientation;
+	m_vRigidBodies[i].setOrientation(orientation);
 }
 
 void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity)
 {
-	m_vRigidBodies[i].lin_velocity = velocity;
+	m_vRigidBodies[i].linVel = velocity;
 }
 
 RigidBodySystemSimulator::RigidBodySystemSimulator()
@@ -131,8 +131,9 @@ void RigidBodySystemSimulator::externalForcesCalculations(float timeElapsed)
 
 void RigidBodySystemSimulator::simulateTimestep(float timeStep)
 {
-	// TODO:https://www.moodle.tum.de/pluginfile.php/4884432/mod_resource/content/0/lecture03c-rigidBodies3D.pdf
-	// slide 15 
+	for (RigidBody& rb : m_vRigidBodies) {
+		rb.simulateTimestep(timeStep);
+	}
 }
 
 void RigidBodySystemSimulator::onClick(int x, int y) {

@@ -13,19 +13,27 @@ public:
 	void addForce(const Vec3& loc, const Vec3& force);
 	void clearForce();
 	Mat4 objToWorldMatrix();
+	Vec3 invIntertia(); // current moment of inertia changes
+	void simulateTimestep(float timeStep);
+	Vec3 getPosition();
+	Vec3 getAngVel();
+	void setOrientation(const Quat& r);
 
-	float mass;
-	Quat orientation;
-	Vec3 ang_velocity;
-	Vec3 force;
-	Vec3 torque;
-	Vec3 lin_velocity;
-	Vec3 position;
-	Vec3 size;
+	Vec3 linVel;
 
 private:
-	Mat4 scaleMat();
 	Mat4 rotMat();
 	Mat4 translatMat();
+
+	Mat4 scaleMat; // body doesn't change size
+	Vec3 invIntertia0; // basic moment of intertia does not change
+	float mass;
+	Quat orientation; // r
+	Vec3 angVel; // w
+	Vec3 force;
+	Vec3 momentum; // L
+	Vec3 torque; // q
+	Vec3 position;
+	Vec3 size;
 };
 #endif
