@@ -41,6 +41,11 @@ void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity)
 	m_vRigidBodies[i].linVel = velocity;
 }
 
+void RigidBodySystemSimulator::setMomentumOf(int i, Vec3 momentum)
+{
+	m_vRigidBodies[i].momentum = momentum;
+}
+
 RigidBodySystemSimulator::RigidBodySystemSimulator()
 {
 	m_externalForce = Vec3();
@@ -64,8 +69,6 @@ const char* RigidBodySystemSimulator::getTestCasesStr()
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 {
 	this->DUC = DUC;
-
-	// TODO: maybe add sth to the tweakbar
 }
 
 void RigidBodySystemSimulator::reset()
@@ -87,20 +90,38 @@ void RigidBodySystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateConte
 void RigidBodySystemSimulator::notifyCaseChanged(int testCase)
 {
 	m_iTestCase = testCase;
+	reset();
 
 	switch (testCase) {
 	case 0:
 		// TODO: calculations for demo 1
-		addRigidBody(Vec3(0, 0, 0), Vec3(1, 0.6, 0.5), 2);
+		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
+		setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI / 2));
+		applyForceOnBody(0, Vec3(.3, .5, .25), Vec3(1, 1, 0));
+		simulateTimestep(2);
+
+		std::cout << "Linear velocity:  " << getLinearVelocityOfRigidBody(0) << "\n";
+		std::cout << "Angular velocity: " << getAngularVelocityOfRigidBody(0) << "\n";
+		std::cout << "World velocity:   " << m_vRigidBodies[0].pointVelocity(Vec3(-0.3, -0.5, -0.25)) << "\n";
+
+		m_vRigidBodies.clear();
 		break;
 	case 1:
-		// TODO: init first 
+		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
+		setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI / 2));
+		applyForceOnBody(0, Vec3(.3, .5, .25), Vec3(1, 1, 0));
+		setMomentumOf(0, Vec3(0.1, 0.1, 0.1));
 		break;
 	case 2:
-		// TODO: init second 
+		addRigidBody(Vec3(-0.25, 0, 0), Vec3(0.1, 0.1, 0.1), 1);
+		addRigidBody(Vec3(0.25, 0, 0), Vec3(0.1, 0.1, 0.1), 1);
+		setVelocityOf(0, Vec3(0.01, 0, 0));
+		setVelocityOf(1, Vec3(-0.01, 0, 0));
+		setMomentumOf(0, Vec3(-0.01, 0, 0));
+		setMomentumOf(1, Vec3(0.01, 0, 0));
 		break;
 	case 3:
-		// TODO: init third 
+		initComplex();
 		break;
 	default: break;
 	}
@@ -131,6 +152,12 @@ void RigidBodySystemSimulator::externalForcesCalculations(float timeElapsed)
 
 void RigidBodySystemSimulator::simulateTimestep(float timeStep)
 {
+	externalForcesCalculations(timeStep);
+
+	for (RigidBody& rb : m_vRigidBodies) {
+		rb.addForce(rb.getPosition(), m_externalForce);
+	}
+
 	for (RigidBody& rb : m_vRigidBodies) {
 		rb.simulateTimestep(timeStep);
 	}
@@ -168,8 +195,8 @@ void RigidBodySystemSimulator::fixCollisions() {
 				Vec3 xA = m_vRigidBodies[a].relativePosition(xWorld);
 				Vec3 xB = m_vRigidBodies[b].relativePosition(xWorld);
 
-				Vec3 vA = m_vRigidBodies[a].pointVelocity(xA);
-				Vec3 vB = m_vRigidBodies[b].pointVelocity(xB);
+				Vec3 vA = m_vRigidBodies[a].pointVelocity(xWorld);
+				Vec3 vB = m_vRigidBodies[b].pointVelocity(xWorld);
 
 				Vec3 vRel = vA - vB;
 
@@ -193,6 +220,24 @@ void RigidBodySystemSimulator::fixCollisions() {
 
 				m_vRigidBodies[a].momentum += cross(xA, impulse * n);
 				m_vRigidBodies[b].momentum -= cross(xB, impulse * n);
+			}
+		}
+	}
+}
+
+void RigidBodySystemSimulator::initComplex()
+{
+	Vec3 size = Vec3(0.1, 0.1, 0.1);
+	int idx = 0;
+
+	for (float x : { -1, 1 }) {
+		for (float y : { -1, 1 }) {
+			for (float z : { -1, 1 }) {
+				float coeff = 1.0 + 0.2 * sin((float)idx); // pseudorandom, slight difference
+				addRigidBody(0.5 * Vec3(x, y, z), size, 1);
+				setVelocityOf(idx, -0.1 * coeff * Vec3(x, y, z));
+				setMomentumOf(idx, 0.01 * coeff * Vec3(y * z, z * x, x * y));
+				idx++;
 			}
 		}
 	}

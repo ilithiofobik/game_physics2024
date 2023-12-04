@@ -24,14 +24,16 @@ public:
 
 	// ExtraFunctions
 	int getNumberOfRigidBodies();
-	Vec3 getPositionOfRigidBody(int i);
-	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getAngularVelocityOfRigidBody(int i);
-	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
+	Vec3 getLinearVelocityOfRigidBody(int i);
+	Vec3 getPositionOfRigidBody(int i);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
+	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
+	void fixCollisions();
+	void initComplex();
+	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
-	void fixCollisions();
 
 private:
 	// Attributes

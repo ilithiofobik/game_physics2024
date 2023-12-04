@@ -100,9 +100,10 @@ Vec3 RigidBody::relativePosition(const Vec3& worldPoint)
 	return worldPoint - position;
 }
 
-Vec3 RigidBody::pointVelocity(const Vec3& relativePoint)
+Vec3 RigidBody::pointVelocity(const Vec3& worldPoint)
 {
-	return linVel + cross(getAngVel(), relativePoint);
+	Vec3 relPoint = relativePosition(worldPoint);
+	return linVel + cross(getAngVel(), relPoint);
 }
 
 Vec3 RigidBody::getAngVel()
