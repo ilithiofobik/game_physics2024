@@ -10,30 +10,32 @@ public:
 	// Construtors
 	RigidBody(Vec3 position, Vec3 size, int mass);
 
+	float getMass();
+	Mat4 invIntertia(); // current moment of inertia changes
+	Mat4 objToWorldMatrix();
+	Vec3 getAngVel();
+	Vec3 getPosition();
+	Vec3 pointVelocity(const Vec3& relativePoint);
+	Vec3 relativePosition(const Vec3& worldPoint);
 	void addForce(const Vec3& loc, const Vec3& force);
 	void clearForce();
-	Mat4 objToWorldMatrix();
-	Mat4 invIntertia(); // current moment of inertia changes
-	void simulateTimestep(float timeStep);
-	Vec3 getPosition();
-	Vec3 getAngVel();
 	void setOrientation(const Quat& r);
+	void simulateTimestep(float timeStep);
 
 	Vec3 linVel;
+	Vec3 momentum; // L
 
 private:
 	Mat4 rotMat();
 	Mat4 translatMat();
 
-	Mat4 scaleMat; // body doesn't change size
-	Vec3 invIntertia0; // basic moment of intertia does not change
 	float mass;
+	Mat4 scaleMat; // body doesn't change size
 	Quat orientation; // r
-	Vec3 angVel; // w
 	Vec3 force;
-	Vec3 momentum; // L
-	Vec3 torque; // q
+	Vec3 invIntertia0; // basic moment of intertia does not change
 	Vec3 position;
 	Vec3 size;
+	Vec3 torque; // q
 };
 #endif

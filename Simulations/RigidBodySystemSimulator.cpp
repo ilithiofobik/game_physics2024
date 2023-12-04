@@ -1,4 +1,4 @@
-#include "RigidBodySystemSimulator.h"
+﻿#include "RigidBodySystemSimulator.h"
 
 int RigidBodySystemSimulator::getNumberOfRigidBodies()
 {
@@ -134,6 +134,8 @@ void RigidBodySystemSimulator::simulateTimestep(float timeStep)
 	for (RigidBody& rb : m_vRigidBodies) {
 		rb.simulateTimestep(timeStep);
 	}
+
+	fixCollisions();
 }
 
 void RigidBodySystemSimulator::onClick(int x, int y) {
@@ -146,4 +148,52 @@ void RigidBodySystemSimulator::onMouse(int x, int y) {
 	m_oldtrackmouse.y = y;
 	m_trackmouse.x = x;
 	m_trackmouse.y = y;
+}
+
+
+void RigidBodySystemSimulator::fixCollisions() {
+	for (int a = 1; a < m_vRigidBodies.size(); a++) {
+		for (int b = 0; b < a; b++) {
+			XMMATRIX obj2WorldA = m_vRigidBodies[a].objToWorldMatrix().toDirectXMatrix();
+			XMMATRIX obj2WorldB = m_vRigidBodies[b].objToWorldMatrix().toDirectXMatrix();
+
+			XMVECTOR sizeA = m_vRigidBodies[a].getPosition().toDirectXVector();
+			XMVECTOR sizeB = m_vRigidBodies[b].getPosition().toDirectXVector();
+
+			CollisionInfo info = collisionTools::checkCollisionSATHelper(obj2WorldA, obj2WorldB, sizeA, sizeB);
+
+			if (info.isValid) {
+				Vec3 xWorld = info.collisionPointWorld;
+
+				Vec3 xA = m_vRigidBodies[a].relativePosition(xWorld);
+				Vec3 xB = m_vRigidBodies[b].relativePosition(xWorld);
+
+				Vec3 vA = m_vRigidBodies[a].pointVelocity(xA);
+				Vec3 vB = m_vRigidBodies[b].pointVelocity(xB);
+
+				Vec3 vRel = vA - vB;
+
+				Vec3 n = info.normalWorld;
+
+				float invMassA = 1.0 / m_vRigidBodies[a].getMass();
+				float invMassB = 1.0 / m_vRigidBodies[b].getMass();
+
+				Mat4 iiA = m_vRigidBodies[a].invIntertia();
+				Mat4 iiB = m_vRigidBodies[b].invIntertia();
+
+				Vec3 prodA = cross(iiA.transformVector(cross(xA, n)), xA);
+				Vec3 prodB = cross(iiB.transformVector(cross(xB, n)), xB);
+
+				float prodAB = dot(prodA + prodB, n);
+
+				float impulse = -2 * dot(vRel, n) / (invMassA + invMassB + prodAB);
+
+				m_vRigidBodies[a].linVel += impulse * n * invMassA;
+				m_vRigidBodies[b].linVel -= impulse * n * invMassB;
+
+				m_vRigidBodies[a].momentum += cross(xA, impulse * n);
+				m_vRigidBodies[b].momentum -= cross(xB, impulse * n);
+			}
+		}
+	}
 }

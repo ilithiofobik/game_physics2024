@@ -14,7 +14,6 @@ RigidBody::RigidBody(Vec3 p, Vec3 s, int m)
 	Vec3 ii0 = Vec3(ix, iy, iz);
 
 	// setting
-	angVel = Vec3();
 	force = Vec3();
 	invIntertia0 = ii0;
 	momentum = Vec3();
@@ -74,14 +73,16 @@ void RigidBody::simulateTimestep(float timeStep)
 	position += timeStep * linVel;
 	linVel += timeStep * (force / mass);
 
+	Vec3 angVel = getAngVel();
 	Quat w0 = Quat(angVel.x, angVel.y, angVel.z, 0.0);
 	orientation += (timeStep / 2.0) * w0 * orientation;
 	orientation = orientation.unit();
 	momentum += timeStep * torque;
 
-	angVel = invIntertia() * momentum;
+	Mat4 ii = invIntertia();
+	angVel = ii.transformVector(momentum);
 
-	clearForce(); // should it?
+	clearForce();
 }
 
 Vec3 RigidBody::getPosition()
@@ -89,9 +90,25 @@ Vec3 RigidBody::getPosition()
 	return position;
 }
 
+float RigidBody::getMass()
+{
+	return mass;
+}
+
+Vec3 RigidBody::relativePosition(const Vec3& worldPoint)
+{
+	return worldPoint - position;
+}
+
+Vec3 RigidBody::pointVelocity(const Vec3& relativePoint)
+{
+	return linVel + cross(getAngVel(), relativePoint);
+}
+
 Vec3 RigidBody::getAngVel()
 {
-	return angVel;
+	Mat4 ii = invIntertia();
+	return ii.transformVector(momentum);;
 }
 
 void RigidBody::setOrientation(const Quat& r)
