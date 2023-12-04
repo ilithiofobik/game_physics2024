@@ -63,7 +63,7 @@ const char* RigidBodySystemSimulator::getTestCasesStr()
 		Demo 3 = two-rigid-body collision scene
 		Demo 4 = complex situation
 	*/
-	return "Demo 1, Demo 2, Demo 3, Demo 4, Reflection Test";
+	return "Demo 1, Demo 2, Demo 3, Demo 4";
 }
 
 void RigidBodySystemSimulator::initUI(DrawingUtilitiesClass* DUC)
@@ -229,14 +229,18 @@ void RigidBodySystemSimulator::initComplex()
 {
 	Vec3 size = Vec3(0.1, 0.1, 0.1);
 	int idx = 0;
+	srand(0);
+	vector<int> range = { -1, 0, 1 };
 
-	for (float x : { -1, 1 }) {
-		for (float y : { -1, 1 }) {
-			for (float z : { -1, 1 }) {
-				float coeff = 1.0 + 0.2 * sin((float)idx); // pseudorandom, slight difference
+	for (float x : range) {
+		for (float y : range) {
+			for (float z : range) {
+				float phi = rand();
+				float mu = rand();
+				float coeff = 1.0 + 0.5 * sin(phi); // pseudorandom, slight difference
 				addRigidBody(0.5 * Vec3(x, y, z), size, 1);
-				setVelocityOf(idx, -0.1 * coeff * Vec3(x, y, z));
-				setMomentumOf(idx, 0.01 * coeff * Vec3(y * z, z * x, x * y));
+				setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
+				setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
 				idx++;
 			}
 		}
