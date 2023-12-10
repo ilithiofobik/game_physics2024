@@ -10,15 +10,14 @@ public:
 	// Construtors
 	RigidBody(Vec3 position, Vec3 size, int mass);
 
+	float getInvMass();
 	float getMass();
 	Mat4 invIntertia(); // current moment of inertia changes
 	Mat4 objToWorldMatrix();
 	Vec3 getAngVel();
 	Vec3 getPosition();
-	// Gives world velocity of worldPoint
-	Vec3 pointVelocity(const Vec3& worldPoint);
-	// Gives position relative to center of mass
-	Vec3 relativePosition(const Vec3& worldPoint);
+	Vec3 pointVelocity(const Vec3& worldPoint); // Gives world velocity of worldPoint
+	Vec3 relativePosition(const Vec3& worldPoint); // Gives position relative to center of mass
 	void addForce(const Vec3& loc, const Vec3& force);
 	void clearForce();
 	void setOrientation(const Quat& r);
@@ -32,6 +31,7 @@ private:
 	Mat4 translatMat();
 
 	float mass;
+	float invMass;
 	Mat4 scaleMat; // body doesn't change size
 	Quat orientation; // r
 	Vec3 force;

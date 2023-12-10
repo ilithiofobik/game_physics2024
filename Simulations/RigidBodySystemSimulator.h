@@ -23,6 +23,7 @@ public:
 	void onMouse(int x, int y);
 
 	// ExtraFunctions
+	CollisionInfo getCollisionInfo(int a, int b);
 	int getNumberOfRigidBodies();
 	Vec3 getAngularVelocityOfRigidBody(int i);
 	Vec3 getLinearVelocityOfRigidBody(int i);
@@ -37,8 +38,6 @@ public:
 
 private:
 	// Attributes
-	// add your RigidBodySystem data members, for e.g.,
-	// RigidBodySystem * m_pRigidBodySystem; 
 	Vec3 m_externalForce;
 	vector<RigidBody> m_vRigidBodies;
 

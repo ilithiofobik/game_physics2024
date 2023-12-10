@@ -41,6 +41,17 @@ void RigidBodySystemSimulator::setVelocityOf(int i, Vec3 velocity)
 	m_vRigidBodies[i].linVel = velocity;
 }
 
+CollisionInfo RigidBodySystemSimulator::getCollisionInfo(int a, int b)
+{
+	XMMATRIX obj2WorldA = m_vRigidBodies[a].objToWorldMatrix().toDirectXMatrix();
+	XMMATRIX obj2WorldB = m_vRigidBodies[b].objToWorldMatrix().toDirectXMatrix();
+
+	XMVECTOR sizeA = m_vRigidBodies[a].getPosition().toDirectXVector();
+	XMVECTOR sizeB = m_vRigidBodies[b].getPosition().toDirectXVector();
+
+	return collisionTools::checkCollisionSATHelper(obj2WorldA, obj2WorldB, sizeA, sizeB);
+}
+
 void RigidBodySystemSimulator::setMomentumOf(int i, Vec3 momentum)
 {
 	m_vRigidBodies[i].momentum = momentum;
@@ -94,7 +105,6 @@ void RigidBodySystemSimulator::notifyCaseChanged(int testCase)
 
 	switch (testCase) {
 	case 0:
-		// TODO: calculations for demo 1
 		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
 		setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI / 2));
 		applyForceOnBody(0, Vec3(.3, .5, .25), Vec3(1, 1, 0));
@@ -131,7 +141,6 @@ void RigidBodySystemSimulator::externalForcesCalculations(float timeElapsed)
 {
 	m_externalForce = Vec3();
 
-	// copy paste from example
 	Point2D mouseDiff;
 	mouseDiff.x = m_trackmouse.x - m_oldtrackmouse.x;
 	mouseDiff.y = m_trackmouse.y - m_oldtrackmouse.y;
@@ -146,8 +155,6 @@ void RigidBodySystemSimulator::externalForcesCalculations(float timeElapsed)
 		inputWorld = inputWorld * inputScale;
 		m_externalForce += m_externalForce + inputWorld;
 	}
-
-	//copy past end
 }
 
 void RigidBodySystemSimulator::simulateTimestep(float timeStep)
@@ -177,17 +184,10 @@ void RigidBodySystemSimulator::onMouse(int x, int y) {
 	m_trackmouse.y = y;
 }
 
-
 void RigidBodySystemSimulator::fixCollisions() {
 	for (int a = 1; a < m_vRigidBodies.size(); a++) {
 		for (int b = 0; b < a; b++) {
-			XMMATRIX obj2WorldA = m_vRigidBodies[a].objToWorldMatrix().toDirectXMatrix();
-			XMMATRIX obj2WorldB = m_vRigidBodies[b].objToWorldMatrix().toDirectXMatrix();
-
-			XMVECTOR sizeA = m_vRigidBodies[a].getPosition().toDirectXVector();
-			XMVECTOR sizeB = m_vRigidBodies[b].getPosition().toDirectXVector();
-
-			CollisionInfo info = collisionTools::checkCollisionSATHelper(obj2WorldA, obj2WorldB, sizeA, sizeB);
+			CollisionInfo info = getCollisionInfo(a, b);
 
 			if (info.isValid) {
 				Vec3 xWorld = info.collisionPointWorld;
@@ -197,13 +197,12 @@ void RigidBodySystemSimulator::fixCollisions() {
 
 				Vec3 vA = m_vRigidBodies[a].pointVelocity(xWorld);
 				Vec3 vB = m_vRigidBodies[b].pointVelocity(xWorld);
-
 				Vec3 vRel = vA - vB;
 
 				Vec3 n = info.normalWorld;
 
-				float invMassA = 1.0 / m_vRigidBodies[a].getMass();
-				float invMassB = 1.0 / m_vRigidBodies[b].getMass();
+				float invMassA = m_vRigidBodies[a].getInvMass();
+				float invMassB = m_vRigidBodies[b].getInvMass();
 
 				Mat4 iiA = m_vRigidBodies[a].invIntertia();
 				Mat4 iiB = m_vRigidBodies[b].invIntertia();

@@ -19,6 +19,7 @@ RigidBody::RigidBody(Vec3 p, Vec3 s, int m)
 	momentum = Vec3();
 	linVel = Vec3();
 	mass = m;
+	invMass = 1.0 / m;
 	orientation = Quat(0.0, 0.0, 0.0, 1.0);
 	position = p;
 	scaleMat = sm;
@@ -93,6 +94,11 @@ Vec3 RigidBody::getPosition()
 float RigidBody::getMass()
 {
 	return mass;
+}
+
+float RigidBody::getInvMass()
+{
+	return invMass;
 }
 
 Vec3 RigidBody::relativePosition(const Vec3& worldPoint)
