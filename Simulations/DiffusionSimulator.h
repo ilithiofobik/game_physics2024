@@ -13,7 +13,7 @@ public:
 	float getCurr(uint32_t i, uint32_t j);
 	void setNext(uint32_t i, uint32_t j, float v);
 	void update();
-	//void resize(uint32_t n, uint32_t m);
+	void updateSize(uint32_t n, uint32_t m);
 	uint32_t pairToIdx(uint32_t i, uint32_t j);
 	Real dx();
 	Real dy();
@@ -25,8 +25,8 @@ public:
 
 private:
 	// Attributes
-	std::vector<float> vec_a;
-	std::vector<float> vec_b;
+	std::vector<Real> vec_a;
+	std::vector<Real> vec_b;
 	bool is_a_curr;
 };
 
@@ -68,7 +68,9 @@ private:
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
 	Grid* T; //save results of every time step
-	Real alpha;
+	Real global_alpha;
+	Real global_n;
+	Real global_m;
 };
 
 #endif

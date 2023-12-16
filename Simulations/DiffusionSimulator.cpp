@@ -6,8 +6,8 @@ Grid::Grid(uint32_t nn, uint32_t mm)
 {
 	n = nn;
 	m = mm;
-	vec_a = std::vector<float>(n * m);
-	vec_b = std::vector<float>(n * m);
+	vec_a = std::vector<Real>(n * m);
+	vec_b = std::vector<Real>(n * m);
 	is_a_curr = true;
 }
 
@@ -36,9 +36,26 @@ void Grid::update()
 	is_a_curr = !is_a_curr;
 }
 
-//void Grid::resize(uint32_t n, uint32_t m)
-//{
-//}
+void Grid::updateSize(uint32_t newN, uint32_t newM)
+{
+	if (n != newN || m != newM) {
+		uint32_t newSize = newN * newM;
+		std::vector<Real> newVec = std::vector<Real>(newSize);
+		uint32_t limitN = min(newN, n);
+		uint32_t limitM = min(newM, m);
+
+		for (int i = 0; i < limitM; i++) {
+			for (int j = 0; j < limitN; j++) {
+				newVec[i * newN + j] = getCurr(i, j);
+			}
+		}
+
+		n = newN;
+		m = newM;
+		vec_a = newVec;
+		vec_b = newVec;
+	}
+}
 
 uint32_t Grid::pairToIdx(uint32_t i, uint32_t j)
 {
@@ -69,8 +86,10 @@ DiffusionSimulator::DiffusionSimulator()
 	m_vfMovableObjectPos = Vec3();
 	m_vfMovableObjectFinalPos = Vec3();
 	m_vfRotate = Vec3();
-	alpha = 0.5;
-	T = new Grid(100, 100);
+	global_alpha = 0.5;
+	global_n = 10;
+	global_m = 100;
+	T = new Grid(global_m, global_n);
 	// to be implemented
 }
 
@@ -89,10 +108,12 @@ void DiffusionSimulator::reset() {
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 }
 
-void DiffusionSimulator::initUI(DrawingUtilitiesClass* DUC)
-{
+void DiffusionSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
-	// to be implemented
+
+	TwAddVarRW(DUC->g_pTweakBar, "Alpha", TW_TYPE_DOUBLE, &global_alpha, "min=0.0 max=1.0");
+	TwAddVarRW(DUC->g_pTweakBar, "Length", TW_TYPE_UINT32, &global_n, "min=5 max=100");
+	TwAddVarRW(DUC->g_pTweakBar, "Width", TW_TYPE_UINT32, &global_m, "min=5 max=100");
 }
 
 void DiffusionSimulator::notifyCaseChanged(int testCase)
@@ -145,7 +166,7 @@ void DiffusionSimulator::diffuseTemperatureExplicit(Real timestep) {//add your o
 			Real t_ijm = T->getCurr(i, j - 1);
 			Real diffx = (t_ipj - 2.0 * t_ij + t_imj) / dx;
 			Real diffy = (t_ijp - 2.0 * t_ij + t_ijm) / dy;
-			Real diff = alpha * timestep * (diffx + diffy);
+			Real diff = global_alpha * timestep * (diffx + diffy);
 			T->setNext(i, j, t_ij + diff);
 		}
 	}
@@ -181,8 +202,8 @@ SparseMatrix<Real> DiffusionSimulator::getMatrixA(Real timestep)
 	const int N = T->totalSize();
 	SparseMatrix<Real> A = SparseMatrix<Real>(N);
 
-	Real lambdaX = alpha * timestep / (dx * dx);
-	Real lambdaY = alpha * timestep / (dy * dy);
+	Real lambdaX = global_alpha * timestep / (dx * dx);
+	Real lambdaY = global_alpha * timestep / (dy * dy);
 
 	for (int i = 0; i < m; i++) {
 		for (int j = 0; j < n; j++) {
@@ -274,6 +295,8 @@ Real DiffusionSimulator::sigmoid(Real x)
 
 void DiffusionSimulator::simulateTimestep(float timeStep)
 {
+	T->updateSize(global_n, global_m);
+
 	// update current setup for each frame
 	switch (m_iTestCase)
 	{
