@@ -165,7 +165,7 @@ void DiffusionSimulator::fillT(std::vector<Real>& x) {//add your own parameters
 	for (int i = 1; i < m - 1; i++) {
 		for (int j = 1; j < n - 1; j++) {
 			uint32_t idx = T->pairToIdx(i, j);
-			T->setNext(i, j, idx);
+			T->setNext(i, j, x[idx]);
 		}
 	}
 
