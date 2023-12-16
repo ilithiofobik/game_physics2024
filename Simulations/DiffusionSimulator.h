@@ -8,7 +8,7 @@
 class Grid {
 public:
 	// Construtors
-	Grid(uint32_t n = 5, uint32_t m = 5);
+	Grid(uint32_t n = 16, uint32_t m = 16);
 
 	float getCurr(uint32_t i, uint32_t j);
 	void setNext(uint32_t i, uint32_t j, float v);
