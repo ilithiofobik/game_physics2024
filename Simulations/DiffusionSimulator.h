@@ -25,8 +25,8 @@ public:
 
 private:
 	// Attributes
-	std::vector<Real> vec_a;
-	std::vector<Real> vec_b;
+	std::vector<std::vector<Real>> vec_a;
+	std::vector<std::vector<Real>> vec_b;
 	bool is_a_curr;
 };
 

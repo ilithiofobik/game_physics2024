@@ -6,28 +6,32 @@ Grid::Grid(uint32_t nn, uint32_t mm)
 {
 	n = nn;
 	m = mm;
-	vec_a = std::vector<Real>(n * m);
-	vec_b = std::vector<Real>(n * m);
+
+	vec_a = std::vector<std::vector<Real>>(m);
+	vec_b = std::vector<std::vector<Real>>(m);
+	for (int i = 0; i < m; i++) {
+		vec_a[i] = std::vector<Real>(n);
+		vec_b[i] = std::vector<Real>(n);
+	}
+
 	is_a_curr = true;
 }
 
 float Grid::getCurr(uint32_t i, uint32_t j)
 {
-	uint32_t idx = pairToIdx(i, j);
 	if (is_a_curr) {
-		return vec_a[idx];
+		return vec_a[i][j];
 	}
-	return vec_b[idx];
+	return vec_b[i][j];
 }
 
 void Grid::setNext(uint32_t i, uint32_t j, float v)
 {
-	uint32_t idx = pairToIdx(i, j);
 	if (is_a_curr) {
-		vec_b[idx] = v;
+		vec_b[i][j] = v;
 	}
 	else {
-		vec_a[idx] = v;
+		vec_a[i][j] = v;
 	}
 }
 
@@ -38,22 +42,18 @@ void Grid::update()
 
 void Grid::updateSize(uint32_t newN, uint32_t newM)
 {
-	if (n != newN || m != newM) {
-		uint32_t newSize = newN * newM;
-		std::vector<Real> newVec = std::vector<Real>(newSize);
-		uint32_t limitN = min(newN, n);
-		uint32_t limitM = min(newM, m);
-
-		for (int i = 0; i < limitM; i++) {
-			for (int j = 0; j < limitN; j++) {
-				newVec[i * newN + j] = getCurr(i, j);
-			}
-		}
-
-		n = newN;
+	if (m != newM) {
+		vec_a.resize(newM);
+		vec_b.resize(newM);
 		m = newM;
-		vec_a = newVec;
-		vec_b = newVec;
+	}
+
+	if (n != newN) {
+		for (int i = 0; i < m; i++) {
+			vec_a[i].resize(newN);
+			vec_b[i].resize(newN);
+		}
+		n = newN;
 	}
 }
 
@@ -87,10 +87,9 @@ DiffusionSimulator::DiffusionSimulator()
 	m_vfMovableObjectFinalPos = Vec3();
 	m_vfRotate = Vec3();
 	global_alpha = 0.5;
-	global_n = 10;
-	global_m = 100;
+	global_n = 50;
+	global_m = 50;
 	T = new Grid(global_m, global_n);
-	// to be implemented
 }
 
 DiffusionSimulator::~DiffusionSimulator()
@@ -121,9 +120,7 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 	m_iTestCase = testCase;
 	m_vfMovableObjectPos = Vec3(0, 0, 0);
 	m_vfRotate = Vec3(0, 0, 0);
-	//
-	// to be implemented
-	//
+
 	uint32_t n = T->n;
 	uint32_t m = T->m;
 
@@ -148,10 +145,7 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 	}
 }
 
-void DiffusionSimulator::diffuseTemperatureExplicit(Real timestep) {//add your own parameters
-	// to be implemented
-	//make sure that the temperature in boundary cells stays zero
-
+void DiffusionSimulator::diffuseTemperatureExplicit(Real timestep) {
 	uint32_t n = T->n;
 	uint32_t m = T->m;
 	Real dx = T->dx();
@@ -175,11 +169,7 @@ void DiffusionSimulator::diffuseTemperatureExplicit(Real timestep) {//add your o
 }
 
 
-void DiffusionSimulator::fillT(std::vector<Real>& x) {//add your own parameters
-	// to be implemented
-	//fill T with solved vector x
-	//make sure that the temperature in boundary cells stays zero
-
+void DiffusionSimulator::fillT(std::vector<Real>& x) {
 	uint32_t n = T->n;
 	uint32_t m = T->m;
 
@@ -258,16 +248,13 @@ std::vector<Real> DiffusionSimulator::getVectorX()
 {
 	const int N = T->totalSize();
 	std::vector<Real> x(N);
-	for (int j = 0; j < N; ++j) { x[j] = 0.0; }
 	return x;
 }
 
 
-void DiffusionSimulator::diffuseTemperatureImplicit(Real timestep) {//add your own parameters
+void DiffusionSimulator::diffuseTemperatureImplicit(Real timestep) {
 	// solve A T = b
-	// to be implemented
 
-	// This is the part where you have to assemble the system matrix A and the right-hand side b!
 	SparseMatrix<Real> A = getMatrixA(timestep);
 	std::vector<Real> b = getVectorB();
 	std::vector<Real> x = getVectorX();
@@ -301,11 +288,9 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 	switch (m_iTestCase)
 	{
 	case 0:
-		// feel free to change the signature of this function
 		diffuseTemperatureExplicit(timeStep);
 		break;
 	case 1:
-		// feel free to change the signature of this function
 		diffuseTemperatureImplicit(timeStep);
 		break;
 	}
