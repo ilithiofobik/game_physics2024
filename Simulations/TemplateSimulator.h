@@ -25,7 +25,6 @@ public:
 
 private:
 	// Attributes
-
 	Vec3  m_vfMovableObjectPos;
 	Vec3  m_vfMovableObjectFinalPos;
 	Vec3  m_vfRotate;

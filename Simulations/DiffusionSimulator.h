@@ -4,7 +4,6 @@
 #include "Simulator.h"
 #include "vectorbase.h"
 
-//impement your own grid class for saving grid data
 class Grid {
 public:
 	// Construtors
@@ -13,7 +12,11 @@ public:
 	float getCurr(uint32_t i, uint32_t j);
 	void setNext(uint32_t i, uint32_t j, float v);
 	void update();
-	void resize(uint32_t n, uint32_t m);
+	//void resize(uint32_t n, uint32_t m);
+	uint32_t pairToIdx(uint32_t i, uint32_t j);
+	Real dx();
+	Real dy();
+	uint32_t totalSize();
 
 	// Attributes
 	uint32_t n;
@@ -43,9 +46,12 @@ public:
 	void externalForcesCalculations(float timeElapsed) {};
 	void onClick(int x, int y);
 	void onMouse(int x, int y);
+	void fillT(std::vector<Real>& x);
 	// Specific Functions
 	void drawObjects();
-	Grid* diffuseTemperatureExplicit();
+
+	// Feel free to change the signature of these functions, add arguments, etc.
+	void diffuseTemperatureExplicit(Real timestep);
 	void diffuseTemperatureImplicit();
 	Real sigmoid(Real x);
 
@@ -58,6 +64,7 @@ private:
 	Point2D m_trackmouse;
 	Point2D m_oldtrackmouse;
 	Grid* T; //save results of every time step
+	Real alpha;
 };
 
 #endif
