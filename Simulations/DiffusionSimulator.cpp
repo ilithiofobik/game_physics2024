@@ -42,8 +42,6 @@ void Grid::update()
 
 void Grid::updateSize(uint32_t newN, uint32_t newM)
 {
-	std::cout << "newN=" << newN << " newM=" << newM << std::endl;
-
 	if (m != newM) {
 		vec_a.resize(newM);
 		vec_b.resize(newM);
@@ -250,8 +248,7 @@ std::vector<Real> DiffusionSimulator::getVectorB()
 
 std::vector<Real> DiffusionSimulator::getVectorX()
 {
-	const int N = T->totalSize();
-	std::vector<Real> x(N);
+	std::vector<Real> x(T->totalSize());
 	return x;
 }
 

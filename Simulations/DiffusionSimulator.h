@@ -69,8 +69,8 @@ private:
 	Point2D m_oldtrackmouse;
 	Grid* T; //save results of every time step
 	Real global_alpha;
-	Real global_n;
-	Real global_m;
+	uint32_t global_n;
+	uint32_t global_m;
 };
 
 #endif
