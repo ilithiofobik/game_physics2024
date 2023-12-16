@@ -42,6 +42,8 @@ void Grid::update()
 
 void Grid::updateSize(uint32_t newN, uint32_t newM)
 {
+	std::cout << "newN=" << newN << " newM=" << newM << std::endl;
+
 	if (m != newM) {
 		vec_a.resize(newM);
 		vec_b.resize(newM);
@@ -111,8 +113,8 @@ void DiffusionSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 
 	TwAddVarRW(DUC->g_pTweakBar, "Alpha", TW_TYPE_DOUBLE, &global_alpha, "min=0.0 max=1.0");
-	TwAddVarRW(DUC->g_pTweakBar, "Length", TW_TYPE_UINT32, &global_n, "min=5 max=100");
-	TwAddVarRW(DUC->g_pTweakBar, "Width", TW_TYPE_UINT32, &global_m, "min=5 max=100");
+	TwAddVarRW(DUC->g_pTweakBar, "Length", TW_TYPE_UINT32, &global_n, "min=5 step=5 max=100");
+	TwAddVarRW(DUC->g_pTweakBar, "Width", TW_TYPE_UINT32, &global_m, "min=5 step=5 max=100");
 }
 
 void DiffusionSimulator::notifyCaseChanged(int testCase)
@@ -126,7 +128,9 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 
 	for (uint32_t i = 1; i < m - 1; i++) {
 		for (uint32_t j = 1; j < n - 1; j++) {
-			T->setNext(i, j, 1000 * cos(i * i + j * j));
+			uint32_t di = i - m / 2;
+			uint32_t dj = j - n / 2;
+			T->setNext(i, j, 1000 * cos(di * di + dj * dj));
 		}
 	}
 	T->update();
@@ -276,8 +280,7 @@ void DiffusionSimulator::diffuseTemperatureImplicit(Real timestep) {
 
 Real DiffusionSimulator::sigmoid(Real x)
 {
-	Real sigmoid = 0.5 + (0.5 * x / (1.0 + abs(x)));
-	return sigmoid;
+	return 0.5 + (0.5 * x / (1.0 + abs(x)));
 }
 
 void DiffusionSimulator::simulateTimestep(float timeStep)
