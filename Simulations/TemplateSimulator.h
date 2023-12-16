@@ -3,14 +3,14 @@
 
 #include "Simulator.h"
 
-class TemplateSimulator:public Simulator{
+class TemplateSimulator :public Simulator {
 public:
 	// Construtors
 	TemplateSimulator();
 
 	// Functions
-	const char * getTestCasesStr();
-	void initUI(DrawingUtilitiesClass * DUC);
+	const char* getTestCasesStr();
+	void initUI(DrawingUtilitiesClass* DUC);
 	void reset();
 	void drawFrame(ID3D11DeviceContext* pd3dImmediateContext);
 	void notifyCaseChanged(int testCase);
@@ -25,6 +25,7 @@ public:
 
 private:
 	// Attributes
+
 	Vec3  m_vfMovableObjectPos;
 	Vec3  m_vfMovableObjectFinalPos;
 	Vec3  m_vfRotate;
