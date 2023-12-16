@@ -70,7 +70,7 @@ DiffusionSimulator::DiffusionSimulator()
 	m_vfMovableObjectFinalPos = Vec3();
 	m_vfRotate = Vec3();
 	alpha = 0.5;
-	T = new Grid();
+	T = new Grid(100, 100);
 	// to be implemented
 }
 
@@ -106,16 +106,17 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 	uint32_t n = T->n;
 	uint32_t m = T->m;
 
+	for (uint32_t i = 1; i < m - 1; i++) {
+		for (uint32_t j = 1; j < n - 1; j++) {
+			T->setNext(i, j, 1000 * cos(i * i + j * j));
+		}
+	}
+	T->update();
+
 	switch (m_iTestCase)
 	{
 	case 0:
 		cout << "Explicit solver!\n";
-		for (uint32_t i = 1; i < m - 1; i++) {
-			for (uint32_t j = 1; j < n - 1; j++) {
-				T->setNext(i, j, cos(i + j));
-			}
-		}
-		T->update();
 		break;
 	case 1:
 		cout << "Implicit solver!\n";
@@ -171,38 +172,84 @@ void DiffusionSimulator::fillT(std::vector<Real>& x) {//add your own parameters
 	T->update();
 }
 
-void setupA(SparseMatrix<Real>& A, double factor) {//add your own parameters
-	// to be implemented
-	//setup Matrix A[sizeX*sizeY*sizeZ, sizeX*sizeY*sizeZ]
-	// set with:  A.set_element( index1, index2 , value );
-	// if needed, read with: A(index1, index2);
-	// avoid zero rows in A -> set the diagonal value for boundary cells to 1.0
-	for (int i = 0; i < 25; i++) {
-		A.set_element(i, i, 1); // set diagonal
+SparseMatrix<Real> DiffusionSimulator::getMatrixA(Real timestep)
+{
+	const int n = T->n;
+	const int m = T->m;
+	const Real dx = T->dx();
+	const Real dy = T->dy();
+	const int N = T->totalSize();
+	SparseMatrix<Real> A = SparseMatrix<Real>(N);
+
+	Real lambdaX = alpha * timestep / (dx * dx);
+	Real lambdaY = alpha * timestep / (dy * dy);
+
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			uint32_t idx = T->pairToIdx(i, j);
+
+			A.set_element(idx, idx, 1 + 2 * lambdaX + 2 * lambdaY);
+
+			if (i > 0) {
+				uint32_t newIdx = T->pairToIdx(i - 1, j);
+				A.set_element(idx, newIdx, -lambdaX);
+			}
+
+			if (i < m - 1) {
+				uint32_t newIdx = T->pairToIdx(i + 1, j);
+				A.set_element(idx, newIdx, -lambdaX);
+			}
+
+			if (j > 0) {
+				uint32_t newIdx = T->pairToIdx(i, j - 1);
+				A.set_element(idx, newIdx, -lambdaY);
+			}
+
+			if (j < n - 1) {
+				uint32_t newIdx = T->pairToIdx(i, j + 1);
+				A.set_element(idx, newIdx, -lambdaY);
+			}
+		}
 	}
+
+	return A;
 }
 
-void setupb(std::vector<Real>& A) {//add your own parameters
-	// to be implemented
-	//setup Matrix A[sizeX*sizeY*sizeZ, sizeX*sizeY*sizeZ]
-	// set with:  A.set_element( index1, index2 , value );
-	// if needed, read with: A(index1, index2);
-	// avoid zero rows in A -> set the diagonal value for boundary cells to 1.0
-	//for (int i = 0; i < 25; i++) {
-	//	A.set_element(i, i, 1); // set diagonal
-	//}
+std::vector<Real> DiffusionSimulator::getVectorB()
+{
+	const int N = T->totalSize();
+	std::vector<Real> b(N);
+
+	uint32_t n = T->n;
+	uint32_t m = T->m;
+
+	for (int i = 1; i < m - 1; i++) {
+		for (int j = 1; j < n - 1; j++) {
+			uint32_t idx = T->pairToIdx(i, j);
+			b[idx] = T->getCurr(i, j);
+		}
+	}
+
+	return b;
 }
 
-void DiffusionSimulator::diffuseTemperatureImplicit() {//add your own parameters
+std::vector<Real> DiffusionSimulator::getVectorX()
+{
+	const int N = T->totalSize();
+	std::vector<Real> x(N);
+	for (int j = 0; j < N; ++j) { x[j] = 0.0; }
+	return x;
+}
+
+
+void DiffusionSimulator::diffuseTemperatureImplicit(Real timestep) {//add your own parameters
 	// solve A T = b
 	// to be implemented
-	const int N = T->totalSize();//N = sizeX*sizeY*sizeZ
-	SparseMatrix<Real>* A = new SparseMatrix<Real>(N);
-	std::vector<Real>* b = new std::vector<Real>(N);
 
 	// This is the part where you have to assemble the system matrix A and the right-hand side b!
-	setupA(*A, alpha);
-	setupb(*b);
+	SparseMatrix<Real> A = getMatrixA(timestep);
+	std::vector<Real> b = getVectorB();
+	std::vector<Real> x = getVectorX();
 
 	// perform solve
 	Real pcg_target_residual = 1e-05;
@@ -213,13 +260,10 @@ void DiffusionSimulator::diffuseTemperatureImplicit() {//add your own parameters
 	SparsePCGSolver<Real> solver;
 	solver.set_solver_parameters(pcg_target_residual, pcg_max_iterations, 0.97, 0.25);
 
-	std::vector<Real> x(N);
-	for (int j = 0; j < N; ++j) { x[j] = 0.; }
-
 	// preconditioners: 0 off, 1 diagonal, 2 incomplete cholesky
-	solver.solve(*A, *b, x, ret_pcg_residual, ret_pcg_iterations, 0);
+	solver.solve(A, b, x, ret_pcg_residual, ret_pcg_iterations, 0);
 	// x contains the new temperature values
-	fillT();//copy x to T
+	fillT(x);//copy x to T
 }
 
 Real DiffusionSimulator::sigmoid(Real x)
@@ -239,7 +283,7 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 		break;
 	case 1:
 		// feel free to change the signature of this function
-		diffuseTemperatureImplicit();
+		diffuseTemperatureImplicit(timeStep);
 		break;
 	}
 }
@@ -260,7 +304,7 @@ void DiffusionSimulator::drawObjects()
 			Real a = sigmoid(t); // making the color change smooth
 			Vec3 color = Vec3(a, 0.0, 1.0 - a);
 			DUC->setUpLighting(Vec3(), color, 1.0, color);
-			DUC->drawSphere(Vec3(i * dx, j * dy, 0), sphereSize);
+			DUC->drawSphere(Vec3(i * dx - 0.5, j * dy - 0.5, 0), sphereSize);
 		}
 	}
 }

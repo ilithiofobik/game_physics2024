@@ -3,6 +3,7 @@
 
 #include "Simulator.h"
 #include "vectorbase.h"
+#include "pcgsolver.h"
 
 class Grid {
 public:
@@ -47,12 +48,15 @@ public:
 	void onClick(int x, int y);
 	void onMouse(int x, int y);
 	void fillT(std::vector<Real>& x);
+	SparseMatrix<Real> getMatrixA(Real timestep);
+	std::vector<Real> getVectorB();
+	std::vector<Real> getVectorX();
 	// Specific Functions
 	void drawObjects();
 
 	// Feel free to change the signature of these functions, add arguments, etc.
 	void diffuseTemperatureExplicit(Real timestep);
-	void diffuseTemperatureImplicit();
+	void diffuseTemperatureImplicit(Real timestep);
 	Real sigmoid(Real x);
 
 private:
