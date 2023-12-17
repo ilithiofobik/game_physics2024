@@ -5,13 +5,15 @@
 #include "vectorbase.h"
 #include "pcgsolver.h"
 
+#define MAX_DIM 100
+
 class Grid {
 public:
 	// Construtors
-	Grid(uint32_t n = 16, uint32_t m = 16);
+	Grid(uint32_t n = 50, uint32_t m = 50);
 
-	float getCurr(uint32_t i, uint32_t j);
-	void setNext(uint32_t i, uint32_t j, float v);
+	Real getCurr(uint32_t i, uint32_t j);
+	void setNext(uint32_t i, uint32_t j, Real v);
 	void update();
 	void updateSize(uint32_t n, uint32_t m);
 	uint32_t pairToIdx(uint32_t i, uint32_t j);
@@ -25,8 +27,8 @@ public:
 
 private:
 	// Attributes
-	std::vector<std::vector<Real>> vec_a;
-	std::vector<std::vector<Real>> vec_b;
+	Real vec_a[MAX_DIM][MAX_DIM];
+	Real vec_b[MAX_DIM][MAX_DIM];
 	bool is_a_curr;
 };
 

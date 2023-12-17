@@ -6,18 +6,17 @@ Grid::Grid(uint32_t nn, uint32_t mm)
 {
 	n = nn;
 	m = mm;
-
-	vec_a = std::vector<std::vector<Real>>(m);
-	vec_b = std::vector<std::vector<Real>>(m);
-	for (int i = 0; i < m; i++) {
-		vec_a[i] = std::vector<Real>(n);
-		vec_b[i] = std::vector<Real>(n);
-	}
-
 	is_a_curr = true;
+
+	for (uint32_t i = 0; i < MAX_DIM; i++) {
+		for (uint32_t j = 0; j < MAX_DIM; j++) {
+			vec_a[i][j] = 0;
+			vec_b[i][j] = 0;
+		}
+	}
 }
 
-float Grid::getCurr(uint32_t i, uint32_t j)
+Real Grid::getCurr(uint32_t i, uint32_t j)
 {
 	if (is_a_curr) {
 		return vec_a[i][j];
@@ -25,7 +24,7 @@ float Grid::getCurr(uint32_t i, uint32_t j)
 	return vec_b[i][j];
 }
 
-void Grid::setNext(uint32_t i, uint32_t j, float v)
+void Grid::setNext(uint32_t i, uint32_t j, Real v)
 {
 	if (is_a_curr) {
 		vec_b[i][j] = v;
@@ -42,18 +41,19 @@ void Grid::update()
 
 void Grid::updateSize(uint32_t newN, uint32_t newM)
 {
-	if (m != newM) {
-		vec_a.resize(newM);
-		vec_b.resize(newM);
+	if (m != newM || n != newN) {
 		m = newM;
-	}
-
-	if (n != newN) {
-		for (int i = 0; i < m; i++) {
-			vec_a[i].resize(newN);
-			vec_b[i].resize(newN);
-		}
 		n = newN;
+
+		for (uint32_t i = 0; i < m; i++) {
+			vec_a[i][n - 1] = 0;
+			vec_b[i][n - 1] = 0;
+		}
+
+		for (uint32_t j = 0; j < n; j++) {
+			vec_a[m - 1][j] = 0;
+			vec_b[m - 1][j] = 0;
+		}
 	}
 }
 
@@ -64,13 +64,13 @@ uint32_t Grid::pairToIdx(uint32_t i, uint32_t j)
 
 Real Grid::dx()
 {
-	double md = m;
+	Real md = m;
 	return 1.0 / md;
 }
 
 Real Grid::dy()
 {
-	double nd = n;
+	Real nd = n;
 	return 1.0 / nd;
 }
 
@@ -86,7 +86,7 @@ DiffusionSimulator::DiffusionSimulator()
 	m_vfMovableObjectPos = Vec3();
 	m_vfMovableObjectFinalPos = Vec3();
 	m_vfRotate = Vec3();
-	global_alpha = 0.5;
+	global_alpha = 0.1;
 	global_n = 50;
 	global_m = 50;
 	T = new Grid(global_m, global_n);
@@ -111,6 +111,7 @@ void DiffusionSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 
 	TwAddVarRW(DUC->g_pTweakBar, "Alpha", TW_TYPE_DOUBLE, &global_alpha, "min=0.0 max=1.0");
+	// max = MAX_DIM
 	TwAddVarRW(DUC->g_pTweakBar, "Length", TW_TYPE_UINT32, &global_n, "min=5 step=5 max=100");
 	TwAddVarRW(DUC->g_pTweakBar, "Width", TW_TYPE_UINT32, &global_m, "min=5 step=5 max=100");
 }
@@ -197,8 +198,8 @@ SparseMatrix<Real> DiffusionSimulator::getMatrixA(Real timestep)
 	Real lambdaX = global_alpha * timestep / (dx * dx);
 	Real lambdaY = global_alpha * timestep / (dy * dy);
 
-	for (int i = 0; i < m; i++) {
-		for (int j = 0; j < n; j++) {
+	for (uint32_t i = 0; i < m; i++) {
+		for (uint32_t j = 0; j < n; j++) {
 			uint32_t idx = T->pairToIdx(i, j);
 
 			A.set_element(idx, idx, 1 + 2 * lambdaX + 2 * lambdaY);
