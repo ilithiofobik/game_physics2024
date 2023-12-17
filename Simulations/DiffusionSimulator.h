@@ -10,7 +10,7 @@
 class Grid {
 public:
 	// Construtors
-	Grid(uint32_t n = 50, uint32_t m = 50);
+	Grid(uint32_t n, uint32_t m);
 
 	Real getCurr(uint32_t i, uint32_t j);
 	void setNext(uint32_t i, uint32_t j, Real v);

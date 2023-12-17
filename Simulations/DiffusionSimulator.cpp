@@ -87,8 +87,8 @@ DiffusionSimulator::DiffusionSimulator()
 	m_vfMovableObjectFinalPos = Vec3();
 	m_vfRotate = Vec3();
 	global_alpha = 0.1;
-	global_n = 50;
-	global_m = 50;
+	global_n = MAX_DIM / 2;
+	global_m = MAX_DIM / 2;
 	T = new Grid(global_m, global_n);
 }
 
