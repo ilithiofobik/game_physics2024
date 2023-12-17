@@ -301,19 +301,20 @@ void DiffusionSimulator::drawObjects()
 {
 	// to be implemented
 	//visualization
-	const Vec3 sphereSize = 0.01 * Vec3(1.0, 1.0, 1.0);
-	uint32_t n = T->n;
-	uint32_t m = T->m;
+	int n = T->n;
+	int m = T->m;
 	Real dx = T->dx();
 	Real dy = T->dy();
+	Real size = (dx + dy) / 2;
+	const Vec3 sphereSize = size * Vec3(1.0, 1.0, 1.0);
 
-	for (uint32_t i = 0; i < m; i++) {
-		for (uint32_t j = 0; j < n; j++) {
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
 			Real t = T->getCurr(i, j);
 			Real a = sigmoid(t); // making the color change smooth
 			Vec3 color = Vec3(a, 0.0, 1.0 - a);
 			DUC->setUpLighting(Vec3(), color, 1.0, color);
-			DUC->drawSphere(Vec3(i * dx - 0.5, j * dy - 0.5, 0), sphereSize);
+			DUC->drawSphere(Vec3((i - m / 2) * size, (j - n / 2) * size, 0), sphereSize);
 		}
 	}
 }
