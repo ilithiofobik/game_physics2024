@@ -110,7 +110,7 @@ void DiffusionSimulator::reset() {
 void DiffusionSimulator::initUI(DrawingUtilitiesClass* DUC) {
 	this->DUC = DUC;
 
-	TwAddVarRW(DUC->g_pTweakBar, "Alpha", TW_TYPE_DOUBLE, &global_alpha, "min=0.0 max=1.0");
+	TwAddVarRW(DUC->g_pTweakBar, "Alpha", TW_TYPE_DOUBLE, &global_alpha, "min=0.0 step=0.05 max=1.0");
 	// max = MAX_DIM
 	TwAddVarRW(DUC->g_pTweakBar, "Length", TW_TYPE_UINT32, &global_n, "min=5 step=5 max=100");
 	TwAddVarRW(DUC->g_pTweakBar, "Width", TW_TYPE_UINT32, &global_m, "min=5 step=5 max=100");
@@ -129,7 +129,8 @@ void DiffusionSimulator::notifyCaseChanged(int testCase)
 		for (uint32_t j = 1; j < n - 1; j++) {
 			uint32_t di = i - m / 2;
 			uint32_t dj = j - n / 2;
-			T->setNext(i, j, 1000 * cos(di * di + dj * dj));
+			uint32_t dd = di * di + dj * dj;
+			T->setNext(i, j, dd * cos(dd));
 		}
 	}
 	T->update();
@@ -202,7 +203,7 @@ SparseMatrix<Real> DiffusionSimulator::getMatrixA(Real timestep)
 		for (uint32_t j = 0; j < n; j++) {
 			uint32_t idx = T->pairToIdx(i, j);
 
-			A.set_element(idx, idx, 1 + 2 * lambdaX + 2 * lambdaY);
+			A.set_element(idx, idx, 1.0 + 2.0 * lambdaX + 2.0 * lambdaY);
 
 			if (i > 0) {
 				uint32_t newIdx = T->pairToIdx(i - 1, j);
@@ -299,13 +300,12 @@ void DiffusionSimulator::simulateTimestep(float timeStep)
 
 void DiffusionSimulator::drawObjects()
 {
-	// to be implemented
 	//visualization
 	int n = T->n;
 	int m = T->m;
 	Real dx = T->dx();
 	Real dy = T->dy();
-	Real size = (dx + dy) / 2;
+	Real size = 2.0 / (1.0 / dx + 1.0 / dy);
 	const Vec3 sphereSize = size * Vec3(1.0, 1.0, 1.0);
 
 	for (int i = 0; i < m; i++) {
@@ -313,7 +313,7 @@ void DiffusionSimulator::drawObjects()
 			Real t = T->getCurr(i, j);
 			Real a = sigmoid(t); // making the color change smooth
 			Vec3 color = Vec3(a, 0.0, 1.0 - a);
-			DUC->setUpLighting(Vec3(), color, 1.0, color);
+			DUC->setUpLighting(Vec3(), color, a, color);
 			DUC->drawSphere(Vec3((i - m / 2) * size, (j - n / 2) * size, 0), sphereSize);
 		}
 	}
