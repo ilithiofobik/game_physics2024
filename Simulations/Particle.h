@@ -6,11 +6,14 @@
 using namespace GamePhysics;
 
 #define PARTICLE_MASS = 1.0 // assume all particles have the same mass
+#define PARTICLE_SIZE = 0.1 // assume all particles have the same size
 
 class Particle {
 public:
 	// Construtors
 	Particle(Vec3 position, Vec3 velocity);
+
+	Vec3 getPosition();
 
 private:
 	float density;

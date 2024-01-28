@@ -2,6 +2,7 @@
 #define SPHSystemSimulator_h
 #include "Simulator.h"
 #include "RigidBody.h"
+#include "Particle.h"
 #include "collisionDetect.h"
 
 #define TESTCASEUSEDTORUNTEST 2
@@ -29,17 +30,25 @@ public:
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
+	void addParticle(Vec3 position, Vec3 velocity);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
 	void initComplex();
+	void initFluid();
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
+	float randInBox();
 
 private:
 	// Attributes
 	Vec3 m_externalForce;
 	vector<RigidBody> m_vRigidBodies;
+	vector<Particle> m_vParticles;
+
+	// Particles constants
+	float particleMass;
+	float particleSize;
 
 	// UI Attributes
 	Point2D m_mouse;

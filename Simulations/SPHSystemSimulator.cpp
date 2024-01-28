@@ -31,6 +31,12 @@ void SPHSystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass)
 	m_vRigidBodies.push_back(newBody);
 }
 
+void SPHSystemSimulator::addParticle(Vec3 position, Vec3 velocity)
+{
+	Particle newParticle = Particle(position, velocity);
+	m_vParticles.push_back(newParticle);
+}
+
 void SPHSystemSimulator::setOrientationOf(int i, Quat orientation)
 {
 	m_vRigidBodies[i].setOrientation(orientation);
@@ -64,6 +70,8 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_mouse.x = m_mouse.y = 0;
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
+	particleMass = 1.0; // constant
+	particleSize = 0.005; // constant
 }
 
 const char* SPHSystemSimulator::getTestCasesStr()
@@ -96,6 +104,15 @@ void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 	for (RigidBody& rb : m_vRigidBodies) {
 		DUC->drawRigidBody(rb.objToWorldMatrix());
 	}
+
+	Vec3 particleScale = particleSize * Vec3(1.0, 1.0, 1.0);
+	Vec3 particleColor = Vec3(1.0, 0.0, 0.0);
+
+	DUC->setUpLighting(Vec3(), particleColor, 0.5, particleColor);
+
+	for (Particle& par : m_vParticles) {
+		DUC->drawSphere(par.getPosition(), particleScale);
+	}
 }
 
 void SPHSystemSimulator::notifyCaseChanged(int testCase)
@@ -105,16 +122,7 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 
 	switch (testCase) {
 	case 0:
-		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
-		setOrientationOf(0, Quat(Vec3(0, 0, 1), M_PI / 2));
-		applyForceOnBody(0, Vec3(.3, .5, .25), Vec3(1, 1, 0));
-		simulateTimestep(2);
-
-		std::cout << "Linear velocity:  " << getLinearVelocityOfRigidBody(0) << "\n";
-		std::cout << "Angular velocity: " << getAngularVelocityOfRigidBody(0) << "\n";
-		std::cout << "World velocity:   " << m_vRigidBodies[0].pointVelocity(Vec3(-0.3, -0.5, -0.25)) << "\n";
-
-		m_vRigidBodies.clear();
+		initFluid();
 		break;
 	case 1:
 		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
@@ -243,5 +251,30 @@ void SPHSystemSimulator::initComplex()
 				idx++;
 			}
 		}
+	}
+}
+
+float SPHSystemSimulator::randInBox() {
+	return 0.5 * sin(rand());
+}
+
+void SPHSystemSimulator::initFluid()
+{
+	int numOfParticles = 1000;
+
+	srand(time(NULL));
+
+	for (int i = 0; i < numOfParticles; i++) {
+		float px = randInBox();
+		float py = randInBox();
+		float pz = randInBox();
+		Vec3 pos = Vec3(px, py, pz);
+
+		float vx = randInBox();
+		float vy = randInBox();
+		float vz = randInBox();
+		Vec3 vel = Vec3(vx, vy, vz);
+
+		addParticle(pos, vel);
 	}
 }
