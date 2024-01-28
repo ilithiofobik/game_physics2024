@@ -14,6 +14,7 @@ public:
 	Particle(Vec3 position, Vec3 velocity);
 
 	Vec3 getPosition();
+	void simulateTimestep(float timeStep);
 
 private:
 	float density;

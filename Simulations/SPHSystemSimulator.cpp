@@ -97,6 +97,7 @@ void SPHSystemSimulator::reset()
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 
 	m_vRigidBodies.clear();
+	m_vParticles.clear();
 }
 
 void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
@@ -106,11 +107,11 @@ void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 	}
 
 	Vec3 particleScale = particleSize * Vec3(1.0, 1.0, 1.0);
-	Vec3 particleColor = Vec3(1.0, 0.0, 0.0);
-
-	DUC->setUpLighting(Vec3(), particleColor, 0.5, particleColor);
+	//Vec3 particleColor = Vec3(1.0, 0.0, 0.0);
 
 	for (Particle& par : m_vParticles) {
+		Vec3 particleColor = par.getPosition() + Vec3(0.5, 0.5, 0.5);
+		DUC->setUpLighting(Vec3(), particleColor, 0.5, particleColor);
 		DUC->drawSphere(par.getPosition(), particleScale);
 	}
 }
@@ -167,6 +168,7 @@ void SPHSystemSimulator::externalForcesCalculations(float timeElapsed)
 
 void SPHSystemSimulator::simulateTimestep(float timeStep)
 {
+	// rigid body part
 	externalForcesCalculations(timeStep);
 
 	for (RigidBody& rb : m_vRigidBodies) {
@@ -178,6 +180,11 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	}
 
 	fixCollisions();
+
+	// fluid part
+	for (Particle& p : m_vParticles) {
+		p.simulateTimestep(timeStep);
+	}
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
