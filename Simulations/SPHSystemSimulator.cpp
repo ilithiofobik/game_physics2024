@@ -33,7 +33,7 @@ void SPHSystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass)
 
 void SPHSystemSimulator::addParticle(Vec3 position, Vec3 velocity)
 {
-	Particle newParticle = Particle(position, velocity);
+	Particle newParticle = Particle(position);
 	m_vParticles.push_back(newParticle);
 }
 
@@ -72,12 +72,17 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_trackmouse.x = m_trackmouse.y = 0;
 	particleMass = 1.0; // constant
 	particleSize = 0.005; // constant
+	dampingFactor = 0.9;
+	bound = 0.5;
+	h = 1.0;
+	restDensity = 3.0;
+	gasConstant = 2.0;
 }
 
 const char* SPHSystemSimulator::getTestCasesStr()
 {
 	/*
-		Demo 1 = a simple one-step test
+		Demo 1 = fluid
 		Demo 2 = simple single-body simulation
 		Demo 3 = two-rigid-body collision scene
 		Demo 4 = complex situation
@@ -185,6 +190,10 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	for (Particle& p : m_vParticles) {
 		p.simulateTimestep(timeStep);
 	}
+
+	for (Particle& p : m_vParticles) {
+		p.correctPosition(bound, dampingFactor);
+	}
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
@@ -262,7 +271,8 @@ void SPHSystemSimulator::initComplex()
 }
 
 float SPHSystemSimulator::randInBox() {
-	return 0.5 * sin(rand());
+	float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	return r - 0.5;
 }
 
 void SPHSystemSimulator::initFluid()
@@ -274,14 +284,84 @@ void SPHSystemSimulator::initFluid()
 	for (int i = 0; i < numOfParticles; i++) {
 		float px = randInBox();
 		float py = randInBox();
-		float pz = randInBox();
+		float pz = 0.0; // randInBox();
 		Vec3 pos = Vec3(px, py, pz);
 
 		float vx = randInBox();
 		float vy = randInBox();
-		float vz = randInBox();
+		float vz = 0.0; // randInBox();
 		Vec3 vel = Vec3(vx, vy, vz);
 
 		addParticle(pos, vel);
+	}
+}
+
+
+
+void SPHSystemSimulator::calculatePressureAndDensity()
+{
+	int numOfParticles = m_vParticles.size();
+
+	// reset densities
+	for (Particle& p : m_vParticles) {
+		p.density = 0.0;
+	}
+
+	const float poly6 = POLY6 / pow(h, 9.0);
+	const float hsq = h * h;
+
+	// sum up all densities
+	// using kernel poly6
+	for (int i = 0; i < numOfParticles; i++) {
+		Vec3 pos1 = m_vParticles[i].getPosition();
+		for (int j = i + 1; j < numOfParticles; j++) {
+			Vec3 pos2 = m_vParticles[j].getPosition();
+			float dist = pos1.squaredDistanceTo(pos2);
+
+			if (dist < hsq) {
+				float diff = particleMass * poly6 * pow(hsq - dist, 3.0);
+				m_vParticles[i].density += diff;
+				m_vParticles[j].density += diff;
+			}
+		}
+	}
+
+	// set pressure
+	for (Particle& p : m_vParticles) {
+		p.pressure = gasConstant * (p.density - restDensity);
+	}
+}
+
+void SPHSystemSimulator::calculateParticleForces()
+{
+	int numOfParticles = m_vParticles.size();
+
+	// reset densities
+	for (Particle& p : m_vParticles) {
+		p.density = 0.0;
+	}
+
+	const float poly6 = POLY6 / pow(h, 9.0);
+	const float hsq = h * h;
+
+	// sum up all densities
+	// using kernel poly6
+	for (int i = 0; i < numOfParticles; i++) {
+		Vec3 pos1 = m_vParticles[i].getPosition();
+		for (int j = i + 1; j < numOfParticles; j++) {
+			Vec3 pos2 = m_vParticles[j].getPosition();
+			float dist = pos1.squaredDistanceTo(pos2);
+
+			if (dist < hsq) {
+				float diff = particleMass * poly6 * pow(hsq - dist, 3.0);
+				m_vParticles[i].density += diff;
+				m_vParticles[j].density += diff;
+			}
+		}
+	}
+
+	// set pressure
+	for (Particle& p : m_vParticles) {
+		p.pressure = gasConstant * (p.density - restDensity);
 	}
 }

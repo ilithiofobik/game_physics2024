@@ -1,47 +1,52 @@
 #include "Particle.h"
 
-Particle::Particle(Vec3 position, Vec3 velocity)
+Particle::Particle(Vec3 position)
 {
 	pos = position;
-	vel = velocity;
+	vel = Vec3();
+	force = Vec3();
+	density = 1.0;
+	pressure = 0.0;
 }
 
 Vec3 Particle::getPosition() {
 	return pos;
 }
 
+void Particle::correctPosition(float bound, float dampingFactor) {
+	if (pos.x > bound) {
+		pos.x = bound;
+		vel.x *= -dampingFactor;
+	}
+
+	if (pos.y > bound) {
+		pos.y = bound;
+		vel.y *= -dampingFactor;
+	}
+
+	if (pos.z > bound) {
+		pos.z = bound;
+		vel.z *= -dampingFactor;
+	}
+
+	if (pos.x < -bound) {
+		pos.x = -bound;
+		vel.x *= -dampingFactor;
+	}
+
+	if (pos.y < -bound) {
+		pos.y = -bound;
+		vel.y *= -dampingFactor;
+	}
+
+	if (pos.z < -bound) {
+		pos.z = -bound;
+		vel.z *= -dampingFactor;
+	}
+}
+
 void Particle::simulateTimestep(float timeStep)
 {
 	pos += timeStep * vel;
-	vel.y -= 0.01;
-
-	if (pos.x > 0.5) {
-		pos.x = 0.5;
-		vel.x = -vel.x;
-	}
-
-	if (pos.y > 0.5) {
-		pos.y = 0.5;
-		vel.y = -vel.y;
-	}
-
-	if (pos.z > 0.5) {
-		pos.z = 0.5;
-		vel.z = -vel.z;
-	}
-
-	if (pos.x < -0.5) {
-		pos.x = -0.5;
-		vel.x = -vel.x;
-	}
-
-	if (pos.y < -0.5) {
-		pos.y = -0.5;
-		vel.y = -vel.y;
-	}
-
-	if (pos.z < -0.5) {
-		pos.z = -0.5;
-		vel.z = -vel.z;
-	}
+	vel += timeStep * (force / density);
 }

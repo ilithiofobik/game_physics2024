@@ -11,15 +11,17 @@ using namespace GamePhysics;
 class Particle {
 public:
 	// Construtors
-	Particle(Vec3 position, Vec3 velocity);
+	Particle(Vec3 position);
 
 	Vec3 getPosition();
+	void correctPosition(float bound, float dampingFactor);
 	void simulateTimestep(float timeStep);
 
-private:
 	float density;
 	float pressure;
 
+
+private:
 	Vec3 pos;
 	Vec3 vel;
 	Vec3 force;

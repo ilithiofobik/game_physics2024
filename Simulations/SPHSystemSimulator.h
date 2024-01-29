@@ -7,6 +7,8 @@
 
 #define TESTCASEUSEDTORUNTEST 2
 
+const float POLY6 = 315.0 / (64.0 * M_PI);
+
 class SPHSystemSimulator :public Simulator {
 public:
 	// Construtors
@@ -35,6 +37,8 @@ public:
 	void fixCollisions();
 	void initComplex();
 	void initFluid();
+	void calculatePressureAndDensity();
+	void calculateParticleForces();
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
@@ -45,10 +49,17 @@ private:
 	Vec3 m_externalForce;
 	vector<RigidBody> m_vRigidBodies;
 	vector<Particle> m_vParticles;
+	float dampingFactor;
+	float bound;
+	float h;
+	float restDensity;
+	float gasConstant;
 
 	// Particles constants
 	float particleMass;
 	float particleSize;
+
+
 
 	// UI Attributes
 	Point2D m_mouse;
