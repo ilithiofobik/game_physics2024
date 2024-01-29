@@ -49,11 +49,11 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 	}
 }
 
-pair<int, int> Particle::gridKey(float h)
+void Particle::recalulateGridKey(float h)
 {
 	int x = static_cast<int> (pos.x / h);
 	int y = static_cast<int> (pos.y / h);
-	return make_pair(x, y);
+	gridKey = make_pair(x, y);
 }
 
 Vec3 Particle::force()

@@ -27,7 +27,8 @@ public:
 	Vec3 forceVisc;
 	Vec3 forceGrav;
 
-	pair<int, int> gridKey(float h);
+	pair<int, int> gridKey;
+	void Particle::recalulateGridKey(float h);
 
 private:
 	Vec3 pos;

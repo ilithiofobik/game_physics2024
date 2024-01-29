@@ -10,9 +10,9 @@ void SpatialGrid::addValue(int x, int y, int i)
 	value.at(x).at(y).insert(i);
 }
 
+// does not check if exists!
 void SpatialGrid::removeValue(int x, int y, int i)
 {
-	ensureExists(x, y);
 	value.at(x).at(y).erase(i);
 }
 
@@ -43,4 +43,10 @@ bool SpatialGrid::isEmpty(int x, int y)
 	}
 
 	return value.at(x).at(y).empty();
+}
+
+// does not check if exists!
+const std::unordered_set<int>& SpatialGrid::get(int x, int y)
+{
+	return value.at(x).at(y);
 }

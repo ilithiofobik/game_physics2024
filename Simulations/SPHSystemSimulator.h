@@ -40,7 +40,6 @@ public:
 	void addParticle(Vec3 position, Vec3 velocity);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
-	void initComplex();
 	void initFluid();
 	void calculatePressureAndDensity();
 	void calculateParticleForces();

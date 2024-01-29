@@ -13,6 +13,7 @@ public:
 	void removeValue(int x, int y, int i);
 	void ensureExists(int x, int y);
 	bool isEmpty(int x, int y);
+	const std::unordered_set<int>& get(int x, int y);
 
 private:
 	std::unordered_map<int, std::unordered_map<int, std::unordered_set<int>>> value;

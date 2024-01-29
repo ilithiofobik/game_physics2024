@@ -71,9 +71,9 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	particleMass = 1.0; // constant
-	particleSize = 0.005; // constant
+	particleSize = 0.05; // constant
 	dampingFactor = 0.9;
-	bound = 0.1;
+	bound = 0.5;
 	h = 0.1;
 	gravity = Vec3(0.0, -9.81, 0.0);
 	restDensity = 3.0;
@@ -86,9 +86,8 @@ const char* SPHSystemSimulator::getTestCasesStr()
 		Demo 1 = fluid
 		Demo 2 = simple single-body simulation
 		Demo 3 = two-rigid-body collision scene
-		Demo 4 = complex situation
 	*/
-	return "Demo 1, Demo 2, Demo 3, Demo 4";
+	return "Demo 1, Demo 2, Demo 3";
 }
 
 void SPHSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
@@ -145,9 +144,6 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 		setMomentumOf(0, Vec3(-0.01, 0, 0));
 		setMomentumOf(1, Vec3(0.01, 0, 0));
 		break;
-	case 3:
-		initComplex();
-		break;
 	default: break;
 	}
 }
@@ -191,12 +187,21 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	calculatePressureAndDensity();
 	calculateParticleForces();
 
+	int i = 0;
 	for (Particle& p : m_vParticles) {
-		p.simulateTimestep(timeStep);
-	}
+		pair<int, int> oldIdx = p.gridKey;
 
-	for (Particle& p : m_vParticles) {
+		p.simulateTimestep(timeStep);
 		p.correctPosition(bound, dampingFactor);
+
+		p.recalulateGridKey(h);
+
+		if (oldIdx != p.gridKey) {
+			sGrid.removeValue(oldIdx.first, oldIdx.second, i);
+			sGrid.addValue(p.gridKey.first, p.gridKey.second, i);
+		}
+
+		i++;
 	}
 }
 
@@ -252,28 +257,6 @@ void SPHSystemSimulator::fixCollisions() {
 	}
 }
 
-void SPHSystemSimulator::initComplex()
-{
-	Vec3 size = Vec3(0.1, 0.1, 0.1);
-	int idx = 0;
-	srand(0);
-	vector<int> range = { -1, 0, 1 };
-
-	for (float x : range) {
-		for (float y : range) {
-			for (float z : range) {
-				float phi = rand();
-				float mu = rand();
-				float coeff = 0.5 + randFloat(); // pseudorandom, slight difference
-				addRigidBody(0.5 * Vec3(x, y, z), size, 1);
-				setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
-				setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
-				idx++;
-			}
-		}
-	}
-}
-
 float SPHSystemSimulator::randFloat() {
 	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 }
@@ -296,8 +279,8 @@ void SPHSystemSimulator::initFluid()
 		Vec3 vel = Vec3(vx, vy, vz);
 
 		addParticle(pos, vel);
-		pair<int, int> p = m_vParticles[i].gridKey(h);
-		sGrid.addValue(p.first, p.second, i);
+		m_vParticles[i].recalulateGridKey(h);
+		sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
 	}
 }
 
@@ -307,23 +290,30 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 	const float poly6 = POLY6 / pow(h, 8.0);
 	const float hsq = h * h;
 
-	// densities from the same particle
 	for (Particle& p : m_vParticles) {
-		p.density = pow(hsq, 3.0);
+		p.density = 0.0;
 	}
 
 	// sum up all densities
 	// using kernel poly6
-	for (int i = 0; i < numOfParticles; i++) {
-		Vec3 pos1 = m_vParticles[i].getPosition();
-		for (int j = i + 1; j < numOfParticles; j++) {
-			Vec3 pos2 = m_vParticles[j].getPosition();
-			float dist = pos1.squaredDistanceTo(pos2);
+	for (Particle& p : m_vParticles) {
+		Vec3 pos1 = p.getPosition();
+		pair<int, int> idx = p.gridKey;
 
-			if (dist < hsq) {
-				float diff = pow(hsq - dist, 3.0);
-				m_vParticles[i].density += diff;
-				m_vParticles[j].density += diff;
+		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
+			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
+				if (!sGrid.isEmpty(x, y)) {
+					for (const int& j : sGrid.get(x, y)) {
+						Vec3 pos2 = m_vParticles[j].getPosition();
+						float dist = pos1.squaredDistanceTo(pos2);
+
+						if (dist < hsq) {
+							float diff = pow(hsq - dist, 3.0);
+							p.density += diff;
+							m_vParticles[j].density += diff;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -351,28 +341,34 @@ void SPHSystemSimulator::calculateParticleForces()
 		p.forceGrav = gravity * particleMass / p.density;
 	}
 
-	for (int i = 0; i < numOfParticles; i++) {
-		Vec3 ri = m_vParticles[i].getPosition();
-		for (int j = i + 1; j < numOfParticles; j++) {
-			Vec3 rj = m_vParticles[j].getPosition();
-			Vec3 rij = rj - ri;
-			float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
+	for (Particle& p : m_vParticles) {
+		Vec3 ri = p.getPosition();
+		pair<int, int> idx = p.gridKey;
 
-			if (r < h) {
-				auto pi = m_vParticles[i].pressure;
-				auto pj = m_vParticles[j].pressure;
-				auto vi = m_vParticles[i].getVelocity();
-				auto vj = m_vParticles[j].getVelocity();
-				auto rhoi = m_vParticles[i].density;
-				auto rhoj = m_vParticles[j].density;
+		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
+			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
+				if (!sGrid.isEmpty(x, y)) {
+					for (const int& j : sGrid.get(x, y)) {
+						Vec3 rj = m_vParticles[j].getPosition();
+						Vec3 rij = rj - ri;
+						float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
 
-				auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
-				auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+						if (r < h) {
+							auto pi = p.pressure;
+							auto pj = m_vParticles[j].pressure;
+							auto vi = p.getVelocity();
+							auto vj = m_vParticles[j].getVelocity();
+							auto rhoi = p.density;
+							auto rhoj = m_vParticles[j].density;
 
-				m_vParticles[i].forcePress -= pressDiff / rhoj;
-				m_vParticles[j].forcePress += pressDiff / rhoi;
-				m_vParticles[i].forceVisc += viscDiff / rhoj;
-				m_vParticles[j].forceVisc -= viscDiff / rhoi;
+							auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
+							auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+
+							p.forcePress -= pressDiff / rhoj;
+							p.forceVisc += viscDiff / rhoj;
+						}
+					}
+				}
 			}
 		}
 	}
