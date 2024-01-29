@@ -4,7 +4,9 @@
 #include "RigidBody.h"
 #include "Particle.h"
 #include "collisionDetect.h"
-
+#include "SpatialGrid.h"
+#include <unordered_map>
+#include <unordered_set>
 #define TESTCASEUSEDTORUNTEST 2
 
 // taken from: https://lucasschuermann.com/writing/implementing-sph-in-2d
@@ -52,6 +54,7 @@ private:
 	Vec3 m_externalForce;
 	vector<RigidBody> m_vRigidBodies;
 	vector<Particle> m_vParticles;
+	SpatialGrid sGrid;
 	float dampingFactor;
 	float bound;
 	float h;
@@ -60,8 +63,6 @@ private:
 	Vec3 gravity;
 	float particleMass;
 	float particleSize;
-
-
 
 	// UI Attributes
 	Point2D m_mouse;

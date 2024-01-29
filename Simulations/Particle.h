@@ -7,6 +7,7 @@ using namespace GamePhysics;
 
 #define PARTICLE_MASS = 1.0 // assume all particles have the same mass
 #define PARTICLE_SIZE = 0.1 // assume all particles have the same size
+#define CELL_PRECISION = 100;
 
 class Particle {
 public:
@@ -25,6 +26,8 @@ public:
 	Vec3 forcePress;
 	Vec3 forceVisc;
 	Vec3 forceGrav;
+
+	pair<int, int> gridKey(float h);
 
 private:
 	Vec3 pos;

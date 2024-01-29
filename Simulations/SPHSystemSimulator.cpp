@@ -74,7 +74,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	particleSize = 0.005; // constant
 	dampingFactor = 0.9;
 	bound = 0.1;
-	h = 2.0;
+	h = 0.1;
 	gravity = Vec3(0.0, -9.81, 0.0);
 	restDensity = 3.0;
 	gasConstant = 2.0;
@@ -296,6 +296,8 @@ void SPHSystemSimulator::initFluid()
 		Vec3 vel = Vec3(vx, vy, vz);
 
 		addParticle(pos, vel);
+		pair<int, int> p = m_vParticles[i].gridKey(h);
+		sGrid.addValue(p.first, p.second, i);
 	}
 }
 
