@@ -302,16 +302,18 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 
 		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
 			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
-				if (!sGrid.isEmpty(x, y)) {
-					for (const int& j : sGrid.get(x, y)) {
-						Vec3 pos2 = m_vParticles[j].getPosition();
-						float dist = pos1.squaredDistanceTo(pos2);
+				if (sGrid.isEmpty(x, y)) {
+					continue;
+				}
 
-						if (dist < hsq) {
-							float diff = pow(hsq - dist, 3.0);
-							p.density += diff;
-							m_vParticles[j].density += diff;
-						}
+				for (const int& j : sGrid.get(x, y)) {
+					Vec3 pos2 = m_vParticles[j].getPosition();
+					float dist = pos1.squaredDistanceTo(pos2);
+
+					if (dist < hsq) {
+						float diff = pow(hsq - dist, 3.0);
+						p.density += diff;
+						m_vParticles[j].density += diff;
 					}
 				}
 			}
@@ -347,30 +349,32 @@ void SPHSystemSimulator::calculateParticleForces()
 
 		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
 			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
-				if (!sGrid.isEmpty(x, y)) {
-					for (const int& j : sGrid.get(x, y)) {
-						if (&p == &m_vParticles[j]) {
-							continue;
-						}
+				if (sGrid.isEmpty(x, y)) {
+					continue;
+				}
 
-						Vec3 rj = m_vParticles[j].getPosition();
-						Vec3 rij = rj - ri;
-						float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
+				for (const int& j : sGrid.get(x, y)) {
+					if (&p == &m_vParticles[j]) {
+						continue;
+					}
 
-						if (r < h) {
-							auto pi = p.pressure;
-							auto pj = m_vParticles[j].pressure;
-							auto vi = p.getVelocity();
-							auto vj = m_vParticles[j].getVelocity();
-							auto rhoi = p.density;
-							auto rhoj = m_vParticles[j].density;
+					Vec3 rj = m_vParticles[j].getPosition();
+					Vec3 rij = rj - ri;
+					float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
 
-							auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
-							auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+					if (r < h) {
+						auto pi = p.pressure;
+						auto pj = m_vParticles[j].pressure;
+						auto vi = p.getVelocity();
+						auto vj = m_vParticles[j].getVelocity();
+						auto rhoi = p.density;
+						auto rhoj = m_vParticles[j].density;
 
-							p.forcePress -= pressDiff / rhoj;
-							p.forceVisc += viscDiff / rhoj;
-						}
+						auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
+						auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+
+						p.forcePress += pressDiff / rhoj;
+						p.forceVisc += viscDiff / rhoj;
 					}
 				}
 			}
