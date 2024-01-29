@@ -71,7 +71,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 	particleMass = 1.0; // constant
-	particleSize = 0.05; // constant
+	particleSize = 0.01; // constant
 	dampingFactor = 0.9;
 	bound = 0.5;
 	h = 0.1;
@@ -263,7 +263,7 @@ float SPHSystemSimulator::randFloat() {
 
 void SPHSystemSimulator::initFluid()
 {
-	int numOfParticles = 100;
+	int numOfParticles = 1000;
 
 	srand(time(NULL));
 
@@ -341,31 +341,35 @@ void SPHSystemSimulator::calculateParticleForces()
 		p.forceGrav = gravity * particleMass / p.density;
 	}
 
-	for (Particle& p : m_vParticles) {
-		Vec3 ri = p.getPosition();
-		pair<int, int> idx = p.gridKey;
+	for (int i = 0; i < numOfParticles; i++) {
+		Vec3 ri = m_vParticles[i].getPosition();
+		pair<int, int> idx = m_vParticles[i].gridKey;
 
 		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
 			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
 				if (!sGrid.isEmpty(x, y)) {
 					for (const int& j : sGrid.get(x, y)) {
+						if (i == j) {
+							continue;
+						}
+
 						Vec3 rj = m_vParticles[j].getPosition();
 						Vec3 rij = rj - ri;
 						float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
 
 						if (r < h) {
-							auto pi = p.pressure;
+							auto pi = m_vParticles[i].pressure;
 							auto pj = m_vParticles[j].pressure;
-							auto vi = p.getVelocity();
+							auto vi = m_vParticles[i].getVelocity();
 							auto vj = m_vParticles[j].getVelocity();
-							auto rhoi = p.density;
+							auto rhoi = m_vParticles[i].density;
 							auto rhoj = m_vParticles[j].density;
 
 							auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
 							auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
 
-							p.forcePress -= pressDiff / rhoj;
-							p.forceVisc += viscDiff / rhoj;
+							m_vParticles[i].forcePress -= pressDiff / rhoj;
+							m_vParticles[i].forceVisc += viscDiff / rhoj;
 						}
 					}
 				}
