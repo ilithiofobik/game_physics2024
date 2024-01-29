@@ -73,7 +73,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	particleMass = 1.0; // constant
 	particleSize = 0.005; // constant
 	dampingFactor = 0.9;
-	bound = 0.2;
+	bound = 0.1;
 	h = 2.0;
 	gravity = Vec3(0.0, -9.81, 0.0);
 	restDensity = 3.0;
@@ -264,7 +264,7 @@ void SPHSystemSimulator::initComplex()
 			for (float z : range) {
 				float phi = rand();
 				float mu = rand();
-				float coeff = 1.0 + 0.5 * sin(phi); // pseudorandom, slight difference
+				float coeff = 0.5 + randFloat(); // pseudorandom, slight difference
 				addRigidBody(0.5 * Vec3(x, y, z), size, 1);
 				setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
 				setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
@@ -274,33 +274,30 @@ void SPHSystemSimulator::initComplex()
 	}
 }
 
-float SPHSystemSimulator::randInBox() {
-	float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	return r - 0.5;
+float SPHSystemSimulator::randFloat() {
+	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 }
 
 void SPHSystemSimulator::initFluid()
 {
-	int numOfParticles = 1000;
+	int numOfParticles = 100;
 
 	srand(time(NULL));
 
 	for (int i = 0; i < numOfParticles; i++) {
-		float px = randInBox();
-		float py = randInBox();
+		float px = (2.0 * randFloat() - 1.0) * bound;
+		float py = (2.0 * randFloat() - 1.0) * bound;
 		float pz = 0.0; // randInBox();
 		Vec3 pos = Vec3(px, py, pz);
 
-		float vx = randInBox();
-		float vy = randInBox();
+		float vx = 0.0;
+		float vy = 0.0;
 		float vz = 0.0; // randInBox();
 		Vec3 vel = Vec3(vx, vy, vz);
 
 		addParticle(pos, vel);
 	}
 }
-
-
 
 void SPHSystemSimulator::calculatePressureAndDensity()
 {
