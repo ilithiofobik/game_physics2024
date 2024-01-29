@@ -4,13 +4,17 @@ Particle::Particle(Vec3 position)
 {
 	pos = position;
 	vel = Vec3();
-	force = Vec3();
 	density = 1.0;
 	pressure = 0.0;
 }
 
 Vec3 Particle::getPosition() {
 	return pos;
+}
+
+Vec3 Particle::getVelocity()
+{
+	return vel;
 }
 
 void Particle::correctPosition(float bound, float dampingFactor) {
@@ -45,8 +49,13 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 	}
 }
 
+Vec3 Particle::force()
+{
+	return forcePress + forceVisc + forceGrav;
+}
+
 void Particle::simulateTimestep(float timeStep)
 {
 	pos += timeStep * vel;
-	vel += timeStep * (force / density);
+	vel += timeStep * (force() / density);
 }

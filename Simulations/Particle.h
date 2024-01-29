@@ -14,16 +14,20 @@ public:
 	Particle(Vec3 position);
 
 	Vec3 getPosition();
+	Vec3 getVelocity();
 	void correctPosition(float bound, float dampingFactor);
 	void simulateTimestep(float timeStep);
 
 	float density;
 	float pressure;
 
+	Vec3 force();
+	Vec3 forcePress;
+	Vec3 forceVisc;
+	Vec3 forceGrav;
 
 private:
 	Vec3 pos;
 	Vec3 vel;
-	Vec3 force;
 };
 #endif

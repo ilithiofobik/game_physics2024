@@ -73,8 +73,9 @@ SPHSystemSimulator::SPHSystemSimulator()
 	particleMass = 1.0; // constant
 	particleSize = 0.005; // constant
 	dampingFactor = 0.9;
-	bound = 0.5;
-	h = 1.0;
+	bound = 0.2;
+	h = 2.0;
+	gravity = Vec3(0.0, -9.81, 0.0);
 	restDensity = 3.0;
 	gasConstant = 2.0;
 }
@@ -187,6 +188,9 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	fixCollisions();
 
 	// fluid part
+	calculatePressureAndDensity();
+	calculateParticleForces();
+
 	for (Particle& p : m_vParticles) {
 		p.simulateTimestep(timeStep);
 	}
@@ -300,15 +304,14 @@ void SPHSystemSimulator::initFluid()
 
 void SPHSystemSimulator::calculatePressureAndDensity()
 {
-	int numOfParticles = m_vParticles.size();
-
-	// reset densities
-	for (Particle& p : m_vParticles) {
-		p.density = 0.0;
-	}
-
-	const float poly6 = POLY6 / pow(h, 9.0);
+	const int numOfParticles = m_vParticles.size();
+	const float poly6 = POLY6 / pow(h, 8.0);
 	const float hsq = h * h;
+
+	// densities from the same particle
+	for (Particle& p : m_vParticles) {
+		p.density = pow(hsq, 3.0);
+	}
 
 	// sum up all densities
 	// using kernel poly6
@@ -319,7 +322,7 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 			float dist = pos1.squaredDistanceTo(pos2);
 
 			if (dist < hsq) {
-				float diff = particleMass * poly6 * pow(hsq - dist, 3.0);
+				float diff = pow(hsq - dist, 3.0);
 				m_vParticles[i].density += diff;
 				m_vParticles[j].density += diff;
 			}
@@ -328,40 +331,50 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 
 	// set pressure
 	for (Particle& p : m_vParticles) {
+		// multiply by partilceMass * poly6 only once
+		p.density *= particleMass * poly6;
 		p.pressure = gasConstant * (p.density - restDensity);
 	}
 }
 
 void SPHSystemSimulator::calculateParticleForces()
 {
-	int numOfParticles = m_vParticles.size();
-
-	// reset densities
-	for (Particle& p : m_vParticles) {
-		p.density = 0.0;
-	}
-
-	const float poly6 = POLY6 / pow(h, 9.0);
+	const int numOfParticles = m_vParticles.size();
+	const float spiky = SPIKY / pow(h, 5.0);
+	const float visc = VISC / pow(h, 5.0);
 	const float hsq = h * h;
 
-	// sum up all densities
-	// using kernel poly6
-	for (int i = 0; i < numOfParticles; i++) {
-		Vec3 pos1 = m_vParticles[i].getPosition();
-		for (int j = i + 1; j < numOfParticles; j++) {
-			Vec3 pos2 = m_vParticles[j].getPosition();
-			float dist = pos1.squaredDistanceTo(pos2);
-
-			if (dist < hsq) {
-				float diff = particleMass * poly6 * pow(hsq - dist, 3.0);
-				m_vParticles[i].density += diff;
-				m_vParticles[j].density += diff;
-			}
-		}
+	// reset forces
+	for (Particle& p : m_vParticles) {
+		p.forcePress = 0.0;
+		p.forceVisc = 0.0;
+		// set according to density computed before
+		p.forceGrav = gravity * particleMass / p.density;
 	}
 
-	// set pressure
-	for (Particle& p : m_vParticles) {
-		p.pressure = gasConstant * (p.density - restDensity);
+	for (int i = 0; i < numOfParticles; i++) {
+		Vec3 ri = m_vParticles[i].getPosition();
+		for (int j = i + 1; j < numOfParticles; j++) {
+			Vec3 rj = m_vParticles[j].getPosition();
+			Vec3 rij = rj - ri;
+			float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
+
+			if (r < h) {
+				auto pi = m_vParticles[i].pressure;
+				auto pj = m_vParticles[j].pressure;
+				auto vi = m_vParticles[i].getVelocity();
+				auto vj = m_vParticles[j].getVelocity();
+				auto rhoi = m_vParticles[i].density;
+				auto rhoj = m_vParticles[j].density;
+
+				auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
+				auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+
+				m_vParticles[i].forcePress -= pressDiff / rhoj;
+				m_vParticles[j].forcePress += pressDiff / rhoi;
+				m_vParticles[i].forceVisc += viscDiff / rhoj;
+				m_vParticles[j].forceVisc -= viscDiff / rhoi;
+			}
+		}
 	}
 }

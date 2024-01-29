@@ -7,7 +7,10 @@
 
 #define TESTCASEUSEDTORUNTEST 2
 
-const float POLY6 = 315.0 / (64.0 * M_PI);
+// taken from: https://lucasschuermann.com/writing/implementing-sph-in-2d
+const float POLY6 = 4.0 / M_PI;
+const float SPIKY = -10.0 / M_PI;
+const float VISC = 40.0 / M_PI;
 
 class SPHSystemSimulator :public Simulator {
 public:
@@ -54,8 +57,7 @@ private:
 	float h;
 	float restDensity;
 	float gasConstant;
-
-	// Particles constants
+	Vec3 gravity;
 	float particleMass;
 	float particleSize;
 
