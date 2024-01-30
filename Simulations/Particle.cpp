@@ -1,10 +1,10 @@
 #include "Particle.h"
 
-Particle::Particle(Vec3 position)
+Particle::Particle(Vec3 position, float d)
 {
 	pos = position;
 	vel = Vec3();
-	density = 1.0;
+	density = d;
 	pressure = 0.0;
 }
 

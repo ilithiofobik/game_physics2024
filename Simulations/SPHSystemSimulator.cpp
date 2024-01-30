@@ -1,4 +1,5 @@
 #include "SPHSystemSimulator.h"
+#include <chrono>
 
 int SPHSystemSimulator::getNumberOfRigidBodies()
 {
@@ -31,9 +32,9 @@ void SPHSystemSimulator::addRigidBody(Vec3 position, Vec3 size, int mass)
 	m_vRigidBodies.push_back(newBody);
 }
 
-void SPHSystemSimulator::addParticle(Vec3 position, Vec3 velocity)
+void SPHSystemSimulator::addParticle(Vec3 position, Vec3 velocity, float density)
 {
-	Particle newParticle = Particle(position);
+	Particle newParticle = Particle(position, density);
 	m_vParticles.push_back(newParticle);
 }
 
@@ -76,7 +77,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	bound = 0.5;
 	h = 0.1;
 	gravity = Vec3(0.0, -9.81, 0.0);
-	restDensity = 3.0;
+	restDensity = 1.0;
 	gasConstant = 2.0;
 }
 
@@ -184,6 +185,8 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	fixCollisions();
 
 	// fluid part
+	//auto start = chrono::high_resolution_clock::now();
+
 	calculatePressureAndDensity();
 	calculateParticleForces();
 
@@ -203,6 +206,10 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 
 		i++;
 	}
+
+	//auto stop = chrono::high_resolution_clock::now();
+	//auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+	//cout << "Time taken by function: " << duration.count() << " microseconds" << endl;
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
@@ -263,25 +270,48 @@ float SPHSystemSimulator::randFloat() {
 
 void SPHSystemSimulator::initFluid()
 {
-	int numOfParticles = 1000;
+	int dimensionSize = 5;
+	float maxRadius = static_cast<float> (dimensionSize);
+	float maxRadius2 = maxRadius * maxRadius;
+
+	int i = 0;
+	for (int x = -dimensionSize; x <= dimensionSize; x++) {
+		float px = static_cast<float> (x);
+		for (int y = -dimensionSize; y <= dimensionSize; y++) {
+			float py = static_cast<float> (y);
+			for (int z = -dimensionSize; z <= dimensionSize; z++) {
+				float pz = static_cast<float> (z);
+				float radius2 = px * px + py * py + pz * pz;
+
+				if (radius2 <= maxRadius2) {
+					float density = (maxRadius2 - radius2) / maxRadius2 + 0.5;
+					Vec3 pos = 0.5 * h * Vec3(px, py, pz);
+					addParticle(pos, Vec3(), density);
+					m_vParticles[i].recalulateGridKey(h);
+					sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
+					i++;
+				}
+			}
+		}
+	}
 
 	srand(time(NULL));
 
-	for (int i = 0; i < numOfParticles; i++) {
-		float px = (2.0 * randFloat() - 1.0) * bound;
-		float py = (2.0 * randFloat() - 1.0) * bound;
-		float pz = 0.0; // randInBox();
-		Vec3 pos = Vec3(px, py, pz);
+	//for (int i = 0; i < numOfParticles; i++) {
+	//	float px = (2.0 * randFloat() - 1.0) * bound;
+	//	float py = (2.0 * randFloat() - 1.0) * bound;
+	//	float pz = 0.0; // randInBox();
+	//	Vec3 pos = Vec3(px, py, pz);
 
-		float vx = 0.0;
-		float vy = 0.0;
-		float vz = 0.0; // randInBox();
-		Vec3 vel = Vec3(vx, vy, vz);
+	//	float vx = 0.0;
+	//	float vy = 0.0;
+	//	float vz = 0.0; // randInBox();
+	//	Vec3 vel = Vec3(vx, vy, vz);
 
-		addParticle(pos, vel);
-		m_vParticles[i].recalulateGridKey(h);
-		sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
-	}
+		//addParticle(pos, vel);
+		//m_vParticles[i].recalulateGridKey(h);
+		//sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
+	//}
 }
 
 void SPHSystemSimulator::calculatePressureAndDensity()
@@ -381,3 +411,9 @@ void SPHSystemSimulator::calculateParticleForces()
 		}
 	}
 }
+
+
+/*
+- N_h (average num of neighbours) should be around 30
+
+*/

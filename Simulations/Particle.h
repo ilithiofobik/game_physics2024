@@ -12,7 +12,7 @@ using namespace GamePhysics;
 class Particle {
 public:
 	// Construtors
-	Particle(Vec3 position);
+	Particle(Vec3 position, float d);
 
 	Vec3 getPosition();
 	Vec3 getVelocity();

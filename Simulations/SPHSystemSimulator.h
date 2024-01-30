@@ -37,7 +37,7 @@ public:
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
-	void addParticle(Vec3 position, Vec3 velocity);
+	void addParticle(Vec3 position, Vec3 velocity, float density);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
 	void initFluid();
