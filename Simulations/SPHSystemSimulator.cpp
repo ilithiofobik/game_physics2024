@@ -118,12 +118,12 @@ void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 		DUC->drawRigidBody(rb.objToWorldMatrix());
 	}
 
+	Vec3 white = Vec3(1.0, 1.0, 1.0);
 	Vec3 particleScale = particleSize * Vec3(1.0, 1.0, 1.0);
 	//Vec3 particleColor = Vec3(1.0, 0.0, 0.0);
 
 	for (Particle& par : m_vParticles) {
-		Vec3 particleColor = par.getPosition() + Vec3(0.5, 0.5, 0.5);
-		DUC->setUpLighting(Vec3(), particleColor, 0.5, particleColor);
+		DUC->setUpLighting(Vec3(), white, 0.5, white);
 		DUC->drawSphere(par.getPosition(), particleScale);
 	}
 }
@@ -199,7 +199,7 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 
 	int i = 0;
 	for (Particle& p : m_vParticles) {
-		pair<int, int> oldIdx = p.gridKey;
+		tuple<int, int, int> oldIdx = p.gridKey;
 
 		p.simulateTimestep(timeStep);
 		p.correctPosition(bound, dampingFactor);
@@ -207,8 +207,8 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 		p.recalulateGridKey(h);
 
 		if (oldIdx != p.gridKey) {
-			sGrid.removeValue(oldIdx.first, oldIdx.second, i);
-			sGrid.addValue(p.gridKey.first, p.gridKey.second, i);
+			sGrid.removeValue(oldIdx, i);
+			sGrid.addValue(p.gridKey, i);
 		}
 
 		i++;
@@ -341,7 +341,7 @@ void SPHSystemSimulator::initFluid()
 					Vec3 pos = 0.5 * h * Vec3(px, py, pz);
 					addParticle(pos, density);
 					m_vParticles[i].recalulateGridKey(h);
-					sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
+					sGrid.addValue(m_vParticles[i].gridKey, i);
 					i++;
 				}
 			}
@@ -369,8 +369,8 @@ void SPHSystemSimulator::initFluid()
 
 void SPHSystemSimulator::initSphSystem()
 {
-	int dimensionSize = 17; // 17^3 is more or less 5000
-	float sideLen = 0.4642; // more or less 0.1^0.333333
+	int dimensionSize = 9; // 17^3 is more or less 5000
+	float sideLen = 0.24575294117; // more or less 0.1^0.333333
 	float particleDist = sideLen / (dimensionSize - 1);
 	float halfLen = 0.5 * sideLen;
 
@@ -384,7 +384,7 @@ void SPHSystemSimulator::initSphSystem()
 				Vec3 pos = Vec3(px, py, pz);
 				addParticle(pos, restDensity);
 				m_vParticles[i].recalulateGridKey(h);
-				sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
+				sGrid.addValue(m_vParticles[i].gridKey, i);
 				i++;
 			}
 		}
@@ -393,34 +393,27 @@ void SPHSystemSimulator::initSphSystem()
 
 void SPHSystemSimulator::calculatePressureAndDensity()
 {
-	const int numOfParticles = m_vParticles.size();
-	const float poly6 = POLY6 / pow(h, 8.0);
-	const float hsq = h * h;
-
 	for (Particle& p : m_vParticles) {
 		p.density = 0.0;
+		p.pressure = 0.0;
 	}
 
-	// sum up all densities
-	// using kernel poly6
 	for (Particle& p : m_vParticles) {
 		Vec3 pos1 = p.getPosition();
-		pair<int, int> idx = p.gridKey;
+		int x0, y0, z0;
+		std::tie(x0, y0, z0) = p.gridKey;
 
-		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
-			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
-				if (sGrid.isEmpty(x, y)) {
-					continue;
-				}
+		for (int x = x0 - 1; x <= x0 + 1; x++) {
+			for (int y = y0 - 1; y <= y0 + 1; y++) {
+				for (int z = z0 - 1; z <= z0 + 1; z++) {
+					if (sGrid.isEmpty(x, y, z)) {
+						continue;
+					}
 
-				for (const int& j : sGrid.get(x, y)) {
-					Vec3 pos2 = m_vParticles[j].getPosition();
-					float dist = pos1.squaredDistanceTo(pos2);
-
-					if (dist < hsq) {
-						float diff = pow(hsq - dist, 3.0);
-						p.density += diff;
-						m_vParticles[j].density += diff;
+					for (const int& j : sGrid.get(x, y, z)) {
+						Vec3 pos2 = m_vParticles[j].getPosition();
+						float r = sqrt(pos1.squaredDistanceTo(pos2));
+						p.density += particleMass * defaultKernel(r, h);
 					}
 				}
 			}
@@ -429,9 +422,7 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 
 	// set pressure
 	for (Particle& p : m_vParticles) {
-		// multiply by partilceMass * poly6 only once
-		p.density *= particleMass * poly6;
-		p.pressure = gasConstant * (p.density - restDensity);
+		p.pressure = gasStiffness * (p.density - restDensity);
 	}
 }
 
@@ -452,36 +443,39 @@ void SPHSystemSimulator::calculateParticleForces()
 
 	for (Particle& p : m_vParticles) {
 		Vec3 ri = p.getPosition();
-		pair<int, int> idx = p.gridKey;
+		int x0, y0, z0;
+		std::tie(x0, y0, z0) = p.gridKey;
 
-		for (int x = idx.first - 1; x <= idx.first + 1; x++) {
-			for (int y = idx.second - 1; y <= idx.second + 1; y++) {
-				if (sGrid.isEmpty(x, y)) {
-					continue;
-				}
-
-				for (const int& j : sGrid.get(x, y)) {
-					if (&p == &m_vParticles[j]) {
+		for (int x = x0 - 1; x <= x0 + 1; x++) {
+			for (int y = y0 - 1; y <= y0 + 1; y++) {
+				for (int z = z0 - 1; z <= z0 + 1; z++) {
+					if (sGrid.isEmpty(x, y, z)) {
 						continue;
 					}
 
-					Vec3 rj = m_vParticles[j].getPosition();
-					Vec3 rij = rj - ri;
-					float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
+					for (const int& j : sGrid.get(x, y, z)) {
+						if (&p == &m_vParticles[j]) {
+							continue;
+						}
 
-					if (r < h) {
-						auto pi = p.pressure;
-						auto pj = m_vParticles[j].pressure;
-						auto vi = p.getVelocity();
-						auto vj = m_vParticles[j].getVelocity();
-						auto rhoi = p.density;
-						auto rhoj = m_vParticles[j].density;
+						Vec3 rj = m_vParticles[j].getPosition();
+						Vec3 rij = rj - ri;
+						float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
 
-						auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
-						auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+						if (r < h) {
+							auto pi = p.pressure;
+							auto pj = m_vParticles[j].pressure;
+							auto vi = p.getVelocity();
+							auto vj = m_vParticles[j].getVelocity();
+							auto rhoi = p.density;
+							auto rhoj = m_vParticles[j].density;
 
-						p.forcePress += pressDiff / rhoj;
-						p.forceVisc += viscDiff / rhoj;
+							auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
+							auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+
+							p.forcePress += pressDiff / rhoj;
+							p.forceVisc += viscDiff / rhoj;
+						}
 					}
 				}
 			}

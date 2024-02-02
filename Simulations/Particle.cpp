@@ -53,7 +53,8 @@ void Particle::recalulateGridKey(float h)
 {
 	int x = static_cast<int> (pos.x / h);
 	int y = static_cast<int> (pos.y / h);
-	gridKey = make_pair(x, y);
+	int z = static_cast<int> (pos.z / h);
+	gridKey = { x,y,z };
 }
 
 Vec3 Particle::force()
