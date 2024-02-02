@@ -8,9 +8,10 @@ RigidBody::RigidBody(Vec3 p, Vec3 s, int m)
 	Mat4 sm = Mat4();
 	sm.initScaling(s.x, s.y, s.z);
 
-	double ix = 12.0 / (m * (s.y * s.y + s.z * s.z));
-	double iy = 12.0 / (m * (s.x * s.x + s.z * s.z));
-	double iz = 12.0 / (m * (s.y * s.y + s.x * s.x));
+	float im = 1.0 / static_cast<float>(m);
+	double ix = im * 12.0 / (s.y * s.y + s.z * s.z);
+	double iy = im * 12.0 / (s.x * s.x + s.z * s.z);
+	double iz = im * 12.0 / (s.y * s.y + s.x * s.x);
 	Vec3 ii0 = Vec3(ix, iy, iz);
 
 	// setting
@@ -18,8 +19,26 @@ RigidBody::RigidBody(Vec3 p, Vec3 s, int m)
 	invIntertia0 = ii0;
 	momentum = Vec3();
 	linVel = Vec3();
-	mass = m;
-	invMass = 1.0 / m;
+	invMass = im;
+	orientation = Quat(0.0, 0.0, 0.0, 1.0);
+	position = p;
+	scaleMat = sm;
+	size = s;
+	torque = Vec3();
+}
+
+RigidBody::RigidBody(Vec3 p, Vec3 s)
+{
+	// precalculation
+	Mat4 sm = Mat4();
+	sm.initScaling(s.x, s.y, s.z);
+
+	// setting
+	force = Vec3();
+	invIntertia0 = Vec3();
+	momentum = Vec3();
+	linVel = Vec3();
+	invMass = 0.0;
 	orientation = Quat(0.0, 0.0, 0.0, 1.0);
 	position = p;
 	scaleMat = sm;
@@ -72,7 +91,7 @@ Mat4 RigidBody::invIntertia()
 void RigidBody::simulateTimestep(float timeStep)
 {
 	position += timeStep * linVel;
-	linVel += timeStep * (force / mass);
+	linVel += timeStep * force * invMass;
 
 	Vec3 angVel = getAngVel();
 	Quat w0 = Quat(angVel.x, angVel.y, angVel.z, 0.0);
@@ -89,11 +108,6 @@ void RigidBody::simulateTimestep(float timeStep)
 Vec3 RigidBody::getPosition()
 {
 	return position;
-}
-
-float RigidBody::getMass()
-{
-	return mass;
 }
 
 float RigidBody::getInvMass()

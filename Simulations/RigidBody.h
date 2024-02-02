@@ -9,9 +9,9 @@ class RigidBody {
 public:
 	// Construtors
 	RigidBody(Vec3 position, Vec3 size, int mass);
+	RigidBody(Vec3 position, Vec3 size);
 
 	float getInvMass();
-	float getMass();
 	Mat4 invIntertia(); // current moment of inertia changes
 	Mat4 objToWorldMatrix();
 	Vec3 getAngVel();
@@ -30,7 +30,6 @@ private:
 	Mat4 rotMat();
 	Mat4 translatMat();
 
-	float mass;
 	float invMass;
 	Mat4 scaleMat; // body doesn't change size
 	Quat orientation; // r

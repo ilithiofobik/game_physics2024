@@ -5,14 +5,7 @@
 #include "Particle.h"
 #include "collisionDetect.h"
 #include "SpatialGrid.h"
-#include <unordered_map>
-#include <unordered_set>
 #define TESTCASEUSEDTORUNTEST 2
-
-// taken from: https://lucasschuermann.com/writing/implementing-sph-in-2d
-const float POLY6 = 4.0 / M_PI;
-const float SPIKY = -10.0 / M_PI;
-const float VISC = 40.0 / M_PI;
 
 class SPHSystemSimulator :public Simulator {
 public:
@@ -37,19 +30,18 @@ public:
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
-	void addParticle(Vec3 position, float density);
+	void addWall(Vec3 position, Vec3 size);
+	void addParticle(Vec3 position);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
-	void initFluid();
 	void initSphSystem();
+	void initComplex();
 	void calculatePressureAndDensity();
 	void calculateParticleForces();
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
 	float randFloat();
-	float pressureKernel(float r, float h);
-	float viscosityKernel(float r, float h);
 	float defaultKernel(float r, float h);
 	Vec3 pressureGradient(Vec3 r, float rlen, float h);
 	float viscosityLaplacian(float rlen, float h);
@@ -64,7 +56,6 @@ private:
 	float bound;
 	float h;
 	float restDensity;
-	float gasConstant;
 	float viscosity;
 	float gasStiffness;
 	Vec3 gravity;
