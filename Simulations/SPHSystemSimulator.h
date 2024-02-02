@@ -37,7 +37,7 @@ public:
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
-	void addParticle(Vec3 position, Vec3 velocity, float density);
+	void addParticle(Vec3 position, float density);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
 	void initFluid();
@@ -47,6 +47,9 @@ public:
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
 	float randFloat();
+	float pressureKernel(float r, float h);
+	float viscosityKernel(float r, float h);
+	float defaultKernel(float r, float h);
 
 private:
 	// Attributes
@@ -59,6 +62,8 @@ private:
 	float h;
 	float restDensity;
 	float gasConstant;
+	float viscosity;
+	float gasStiffness;
 	Vec3 gravity;
 	float particleMass;
 	float particleSize;
