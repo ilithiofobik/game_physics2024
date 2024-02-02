@@ -141,3 +141,39 @@ bool RigidBody::isWall()
 {
 	return invMass == 0.0;
 }
+
+std::tuple<int, int, int, int, int, int> RigidBody::calculateBV(float h, float particleSize)
+{
+	Mat4 mat = objToWorldMatrix();
+	Real minX = std::numeric_limits<Real>::max();
+	Real minY = minX;
+	Real minZ = minX;
+	Real maxX = -minX;
+	Real maxY = -minX;
+	Real maxZ = -minX;
+
+	// check vertices
+	for (float x : {-1.0, 1.0}) {
+		for (float y : {-1.0, 1.0}) {
+			for (float z : {-1.0, 1.0}) {
+				Vec3 v = Vec3(x, y, z);
+				Vec3 u = mat.transformVector(v);
+				minX = std::min(v.x, minX);
+				minY = std::min(v.y, minY);
+				minZ = std::min(v.z, minZ);
+				maxX = std::max(v.x, maxX);
+				maxY = std::max(v.y, maxY);
+				maxZ = std::max(v.z, maxZ);
+			}
+		}
+	}
+
+	int iminX = static_cast<int> ((-particleSize + minX) / h);
+	int iminY = static_cast<int> ((-particleSize + minY) / h);
+	int iminZ = static_cast<int> ((-particleSize + minZ) / h);
+	int imaxX = static_cast<int> ((particleSize + maxX) / h);
+	int imaxY = static_cast<int> ((particleSize + maxY) / h);
+	int imaxZ = static_cast<int> ((particleSize + maxZ) / h);
+
+	return { iminX, iminY, iminZ, imaxX, imaxY, imaxZ };
+}

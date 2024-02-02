@@ -190,7 +190,7 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 		rb.simulateTimestep(timeStep);
 	}
 
-	fixCollisions();
+	// particle part
 	calculatePressureAndDensity();
 	calculateParticleForces();
 
@@ -209,6 +209,9 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 
 		i++;
 	}
+
+	// collisions
+	fixCollisions();
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
@@ -258,7 +261,7 @@ void SPHSystemSimulator::applyImpulse(CollisionInfo& info, RigidBody* a, RigidBo
 }
 
 void SPHSystemSimulator::fixCollisions() {
-	// fix collisions between rigid bodies and particles
+	// fix collisions between rigid bodies
 	for (int a = 1; a < m_vRigidBodies.size(); a++) {
 		for (int b = 0; b < a; b++) {
 			CollisionInfo info = getCollisionInfo(&m_vRigidBodies[a], &m_vRigidBodies[b]);
@@ -267,6 +270,41 @@ void SPHSystemSimulator::fixCollisions() {
 				applyImpulse(info, &m_vRigidBodies[a], &m_vRigidBodies[b]);
 			}
 		}
+	}
+
+	int iminX, iminY, iminZ, imaxX, imaxY, imaxZ;
+	RigidBody pAsRB = RigidBody(Vec3(), particleSize * Vec3(1.0, 1.0, 1.0));
+
+	for (int a = 1; a < m_vRigidBodies.size(); a++) {
+		std::tie(iminX, iminY, iminZ, imaxX, imaxY, imaxZ) = m_vRigidBodies[a].calculateBV(h, particleSize);
+
+		int counter = 0;
+		int properCounter = 0;
+		for (int x = iminX; x <= imaxX; x++) {
+			for (int y = iminY; y <= imaxY; y++) {
+				for (int z = iminZ; z <= imaxZ; z++) {
+					counter++;
+					if (sGrid.isEmpty(x, y, z)) {
+						continue;
+					}
+					properCounter++;
+
+					for (const int& j : sGrid.get(x, y, z)) {
+						pAsRB.linVel = m_vParticles[j].getVelocity();
+						pAsRB.position = m_vParticles[j].getPosition();
+						pAsRB.torque = Vec3();
+
+						CollisionInfo info = getCollisionInfo(&m_vRigidBodies[a], &pAsRB);
+
+						if (info.isValid) {
+							applyImpulse(info, &m_vRigidBodies[a], &pAsRB);
+							m_vParticles[j].fromRigidBody(pAsRB);
+						}
+					}
+				}
+			}
+		}
+		cout << "Counter: " << counter << ", Proper counter: " << properCounter << endl;
 	}
 
 	// fix collisions between rigid bodies and particles

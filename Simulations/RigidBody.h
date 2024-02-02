@@ -23,8 +23,11 @@ public:
 	void setOrientation(const Quat& r);
 	void simulateTimestep(float timeStep);
 	bool isWall();
+	std::tuple<int, int, int, int, int, int> calculateBV(float h, float particleSize);
 
 	Vec3 linVel;
+	Vec3 position;
+	Vec3 torque; // q
 	Vec3 momentum; // L
 
 private:
@@ -36,8 +39,6 @@ private:
 	Quat orientation; // r
 	Vec3 force;
 	Vec3 invIntertia0; // basic moment of intertia does not change
-	Vec3 position;
 	Vec3 size;
-	Vec3 torque; // q
 };
 #endif

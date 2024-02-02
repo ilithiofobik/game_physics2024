@@ -100,7 +100,7 @@ float Particle::viscosityLaplacian(float rlen, float h)
 
 RigidBody Particle::toRigidBody(float particleSize, float particleMass)
 {
-	Vec3 size = particleSize * Vec3(1.0, 1.0, 1.0);
+	Vec3 size = particleSize * sqrt(0.5) * Vec3(1.0, 1.0, 1.0);
 	return RigidBody(pos, particleSize, particleMass);
 }
 
