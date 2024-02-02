@@ -49,6 +49,12 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 	}
 }
 
+void Particle::fromRigidBody(RigidBody& rb)
+{
+	pos = rb.getPosition();
+	vel = rb.linVel;
+}
+
 void Particle::resetForces()
 {
 	forcePress = 0.0;
@@ -90,6 +96,12 @@ float Particle::viscosityLaplacian(float rlen, float h)
 	const float h6 = h2 * h2 * h2;
 	const float coeff = viscosityLaplacianCoeff / h6;
 	return coeff * (h - rlen);
+}
+
+RigidBody Particle::toRigidBody(float particleSize, float particleMass)
+{
+	Vec3 size = particleSize * Vec3(1.0, 1.0, 1.0);
+	return RigidBody(pos, particleSize, particleMass);
 }
 
 void Particle::calculateForces(std::vector<Particle>& particles, SpatialGrid& sg, float h)

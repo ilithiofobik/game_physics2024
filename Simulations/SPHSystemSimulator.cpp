@@ -156,6 +156,7 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 	}
 }
 
+// with gravity
 void SPHSystemSimulator::externalForcesCalculations(float timeElapsed)
 {
 	m_externalForce = gravity;
@@ -269,6 +270,17 @@ void SPHSystemSimulator::fixCollisions() {
 	}
 
 	// fix collisions between rigid bodies and particles
+	for (Particle& p : m_vParticles) {
+		RigidBody pAsRb = p.toRigidBody(particleSize, particleMass);
+		for (int b = 0; b < m_vRigidBodies.size(); b++) {
+			CollisionInfo info = getCollisionInfo(&pAsRb, &m_vRigidBodies[b]);
+
+			if (info.isValid) {
+				applyImpulse(info, &pAsRb, &m_vRigidBodies[b]);
+			}
+		}
+		p.fromRigidBody(pAsRb);
+	}
 }
 
 float SPHSystemSimulator::randFloat() {

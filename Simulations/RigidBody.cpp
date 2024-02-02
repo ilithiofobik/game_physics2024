@@ -2,7 +2,7 @@
 
 // Assume all rigid bodies are boxes
 
-RigidBody::RigidBody(Vec3 p, Vec3 s, int m)
+RigidBody::RigidBody(Vec3 p, Vec3 s, float m)
 {
 	// precalculation
 	Mat4 sm = Mat4();

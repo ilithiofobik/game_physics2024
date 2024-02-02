@@ -8,7 +8,7 @@ using namespace GamePhysics;
 class RigidBody {
 public:
 	// Construtors
-	RigidBody(Vec3 position, Vec3 size, int mass);
+	RigidBody(Vec3 position, Vec3 size, float mass);
 	RigidBody(Vec3 position, Vec3 size);
 
 	float getInvMass();
