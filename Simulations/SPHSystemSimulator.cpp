@@ -321,6 +321,32 @@ float SPHSystemSimulator::defaultKernel(float r, float h)
 	return coeff * d * d * d;
 }
 
+Vec3 SPHSystemSimulator::pressureGradient(Vec3 r, float rlen, float h)
+{
+	if (rlen > h) {
+		return 0.0;
+	}
+
+	Vec3 direction = r / rlen;
+	const float h2 = h * h;
+	const float h6 = h2 * h2 * h2;
+	const float coeff = -45.0 / (M_PI * h6);
+	const float diff2 = (h - rlen) * (h - rlen);
+	return -coeff * diff2 * direction;
+}
+
+float SPHSystemSimulator::viscosityLaplacian(float rlen, float h)
+{
+	if (rlen > h) {
+		return 0.0;
+	}
+
+	const float h2 = h * h;
+	const float h6 = h2 * h2 * h2;
+	const float coeff = 45.0 / (M_PI * h6);
+	return coeff * (h - rlen);
+}
+
 void SPHSystemSimulator::initFluid()
 {
 	int dimensionSize = 5;
@@ -403,9 +429,9 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 		int x0, y0, z0;
 		std::tie(x0, y0, z0) = p.gridKey;
 
-		for (int x = x0 - 1; x <= x0 + 1; x++) {
-			for (int y = y0 - 1; y <= y0 + 1; y++) {
-				for (int z = z0 - 1; z <= z0 + 1; z++) {
+		for (int x : {x0 - 1, x0, x0 + 1}) {
+			for (int y : {y0 - 1, y0, y0 + 1}) {
+				for (int z : {z0 - 1, z0, z0 + 1}) {
 					if (sGrid.isEmpty(x, y, z)) {
 						continue;
 					}
@@ -428,17 +454,10 @@ void SPHSystemSimulator::calculatePressureAndDensity()
 
 void SPHSystemSimulator::calculateParticleForces()
 {
-	const int numOfParticles = m_vParticles.size();
-	const float spiky = SPIKY / pow(h, 5.0);
-	const float visc = VISC / pow(h, 5.0);
-	const float hsq = h * h;
-
 	// reset forces
 	for (Particle& p : m_vParticles) {
 		p.forcePress = 0.0;
 		p.forceVisc = 0.0;
-		// set according to density computed before
-		p.forceGrav = gravity * particleMass / p.density;
 	}
 
 	for (Particle& p : m_vParticles) {
@@ -446,9 +465,9 @@ void SPHSystemSimulator::calculateParticleForces()
 		int x0, y0, z0;
 		std::tie(x0, y0, z0) = p.gridKey;
 
-		for (int x = x0 - 1; x <= x0 + 1; x++) {
-			for (int y = y0 - 1; y <= y0 + 1; y++) {
-				for (int z = z0 - 1; z <= z0 + 1; z++) {
+		for (int x : {x0 - 1, x0, x0 + 1}) {
+			for (int y : {y0 - 1, y0, y0 + 1}) {
+				for (int z : {z0 - 1, z0, z0 + 1}) {
 					if (sGrid.isEmpty(x, y, z)) {
 						continue;
 					}
@@ -459,27 +478,36 @@ void SPHSystemSimulator::calculateParticleForces()
 						}
 
 						Vec3 rj = m_vParticles[j].getPosition();
-						Vec3 rij = rj - ri;
-						float r = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
+						Vec3 rij = ri - rj;
+						float rlen = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
 
-						if (r < h) {
-							auto pi = p.pressure;
-							auto pj = m_vParticles[j].pressure;
-							auto vi = p.getVelocity();
-							auto vj = m_vParticles[j].getVelocity();
-							auto rhoi = p.density;
-							auto rhoj = m_vParticles[j].density;
+						if (rlen < h) {
+							float pi = p.pressure;
+							float pj = m_vParticles[j].pressure;
+							Vec3 ui = p.getVelocity();
+							Vec3 uj = m_vParticles[j].getVelocity();
+							float rhoi = p.density;
+							float rhoj = m_vParticles[j].density;
 
-							auto pressDiff = (rij / r) * particleMass * ((pi + pj) / 2.0) * spiky * pow(h - r, 3.0);
-							auto viscDiff = visc * particleMass * (vj - vi) * (h - r);
+							Vec3 pressDiff = ((pi / (rhoi * rhoi)) + (pj / (rhoj * rhoj))) * pressureGradient(rij, rlen, h);
+							Vec3 viscDiff = ((uj - ui) / rhoj) * viscosityLaplacian(rlen, h);
 
-							p.forcePress += pressDiff / rhoj;
-							p.forceVisc += viscDiff / rhoj;
+							p.forcePress += pressDiff;
+							p.forceVisc += viscDiff;
 						}
 					}
 				}
 			}
 		}
+	}
+
+	for (Particle& p : m_vParticles) {
+		// multiply pressure force by common coefficient
+		p.forcePress *= -p.density * particleMass;
+		// multiply viscosity force by common coefficient
+		p.forceVisc *= viscosity * particleMass;
+		// set gravity force according to formula 4.24
+		p.forceGrav = gravity * p.density;
 	}
 }
 

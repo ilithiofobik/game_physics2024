@@ -51,6 +51,8 @@ public:
 	float pressureKernel(float r, float h);
 	float viscosityKernel(float r, float h);
 	float defaultKernel(float r, float h);
+	Vec3 pressureGradient(Vec3 r, float rlen, float h);
+	float viscosityLaplacian(float rlen, float h);
 
 private:
 	// Attributes
