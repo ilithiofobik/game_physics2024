@@ -72,7 +72,7 @@ Mat4 RigidBody::translatMat()
 	return m;
 }
 
-Mat4 RigidBody::objToWorldMatrix()
+const Mat4 RigidBody::objToWorldMatrix()
 {
 	Mat4 rm = rotMat();
 	Mat4 tm = translatMat();

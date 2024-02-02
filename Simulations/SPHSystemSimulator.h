@@ -4,7 +4,6 @@
 #include "RigidBody.h"
 #include "Particle.h"
 #include "collisionDetect.h"
-#include "SpatialGrid.h"
 #define TESTCASEUSEDTORUNTEST 2
 
 class SPHSystemSimulator :public Simulator {
@@ -24,19 +23,17 @@ public:
 	void onMouse(int x, int y);
 
 	// ExtraFunctions
-	CollisionInfo getCollisionInfo(int a, int b);
-	float defaultKernel(float r, float h);
+	CollisionInfo getCollisionInfo(RigidBody* a, RigidBody* b);
 	float randFloat();
-	float viscosityLaplacian(float rlen, float h);
 	int getNumberOfRigidBodies();
 	Vec3 getAngularVelocityOfRigidBody(int i);
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
-	Vec3 pressureGradient(Vec3 r, float rlen, float h);
 	void addParticle(Vec3 position);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
 	void addWall(Vec3 position, Vec3 size);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
+	void applyImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b);
 	void calculateParticleForces();
 	void calculatePressureAndDensity();
 	void fixCollisions();

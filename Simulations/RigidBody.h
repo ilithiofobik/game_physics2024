@@ -13,7 +13,7 @@ public:
 
 	float getInvMass();
 	Mat4 invIntertia(); // current moment of inertia changes
-	Mat4 objToWorldMatrix();
+	const Mat4 objToWorldMatrix();
 	Vec3 getAngVel();
 	Vec3 getPosition();
 	Vec3 pointVelocity(const Vec3& worldPoint); // Gives world velocity of worldPoint

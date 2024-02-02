@@ -226,7 +226,6 @@
   <ItemGroup>
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="RigidBody.cpp" />
-    <ClCompile Include="RigidBodySystemSimulator.cpp" />
     <ClCompile Include="SpatialGrid.cpp" />
     <ClCompile Include="SPHSystemSimulator.cpp" />
     <ClCompile Include="TemplateSimulator.cpp" />
@@ -238,7 +237,6 @@
     <ClInclude Include="DrawingUtilitiesClass.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="RigidBody.h" />
-    <ClInclude Include="RigidBodySystemSimulator.h" />
     <ClInclude Include="Simulator.h" />
     <ClInclude Include="SpatialGrid.h" />
     <ClInclude Include="SPHSystemSimulator.h" />

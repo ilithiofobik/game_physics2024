@@ -73,13 +73,19 @@ void SPHSystemSimulator::setVelocityOf(int i, Vec3 velocity)
 	m_vRigidBodies[i].linVel = velocity;
 }
 
-CollisionInfo SPHSystemSimulator::getCollisionInfo(int a, int b)
+CollisionInfo SPHSystemSimulator::getCollisionInfo(RigidBody* a, RigidBody* b)
 {
-	XMMATRIX obj2WorldA = m_vRigidBodies[a].objToWorldMatrix().toDirectXMatrix();
-	XMMATRIX obj2WorldB = m_vRigidBodies[b].objToWorldMatrix().toDirectXMatrix();
+	Mat4 matA = a->objToWorldMatrix();
+	Mat4 matB = b->objToWorldMatrix();
 
-	XMVECTOR sizeA = m_vRigidBodies[a].getPosition().toDirectXVector();
-	XMVECTOR sizeB = m_vRigidBodies[b].getPosition().toDirectXVector();
+	XMMATRIX obj2WorldA = matA.toDirectXMatrix();
+	XMMATRIX obj2WorldB = matB.toDirectXMatrix();
+
+	Vec3 posA = a->getPosition();
+	Vec3 posB = b->getPosition();
+
+	XMVECTOR sizeA = posA.toDirectXVector();
+	XMVECTOR sizeB = posB.toDirectXVector();
 
 	return collisionTools::checkCollisionSATHelper(obj2WorldA, obj2WorldB, sizeA, sizeB);
 }
@@ -189,15 +195,15 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 
 	int i = 0;
 	for (Particle& p : m_vParticles) {
-		tuple<int, int, int> oldIdx = p.gridKey;
+		tuple<int, int, int> oldIdx = p.getGridKey();
 
 		p.simulateTimestep(timeStep);
 		p.correctPosition(bound, dampingFactor);
 		p.recalulateGridKey(h);
 
-		if (oldIdx != p.gridKey) {
+		if (oldIdx != p.getGridKey()) {
 			sGrid.removeValue(oldIdx, i);
-			sGrid.addValue(p.gridKey, i);
+			sGrid.addValue(p.getGridKey(), i);
 		}
 
 		i++;
@@ -216,95 +222,57 @@ void SPHSystemSimulator::onMouse(int x, int y) {
 	m_trackmouse.y = y;
 }
 
+void SPHSystemSimulator::applyImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b)
+{
+	Vec3 xWorld = info.collisionPointWorld;
+
+	Vec3 xA = a->relativePosition(xWorld);
+	Vec3 xB = b->relativePosition(xWorld);
+
+	Vec3 vA = a->pointVelocity(xWorld);
+	Vec3 vB = b->pointVelocity(xWorld);
+	Vec3 vRel = vA - vB;
+
+	Vec3 n = info.normalWorld;
+
+	float invMassA = a->getInvMass();
+	float invMassB = b->getInvMass();
+
+	Mat4 iiA = a->invIntertia();
+	Mat4 iiB = b->invIntertia();
+
+	Vec3 prodA = cross(iiA.transformVector(cross(xA, n)), xA);
+	Vec3 prodB = cross(iiB.transformVector(cross(xB, n)), xB);
+
+	float prodAB = dot(prodA + prodB, n);
+
+	// suppose c=1
+	float impulse = -2 * dot(vRel, n) / (invMassA + invMassB + prodAB);
+
+	a->linVel += impulse * n * invMassA;
+	b->linVel -= impulse * n * invMassB;
+
+	a->momentum += cross(xA, impulse * n);
+	b->momentum -= cross(xB, impulse * n);
+}
+
 void SPHSystemSimulator::fixCollisions() {
+	// fix collisions between rigid bodies and particles
 	for (int a = 1; a < m_vRigidBodies.size(); a++) {
 		for (int b = 0; b < a; b++) {
-			CollisionInfo info = getCollisionInfo(a, b);
+			CollisionInfo info = getCollisionInfo(&m_vRigidBodies[a], &m_vRigidBodies[b]);
 
 			if (info.isValid) {
-				Vec3 xWorld = info.collisionPointWorld;
-
-				Vec3 xA = m_vRigidBodies[a].relativePosition(xWorld);
-				Vec3 xB = m_vRigidBodies[b].relativePosition(xWorld);
-
-				Vec3 vA = m_vRigidBodies[a].pointVelocity(xWorld);
-				Vec3 vB = m_vRigidBodies[b].pointVelocity(xWorld);
-				Vec3 vRel = vA - vB;
-
-				Vec3 n = info.normalWorld;
-
-				float invMassA = m_vRigidBodies[a].getInvMass();
-				float invMassB = m_vRigidBodies[b].getInvMass();
-
-				Mat4 iiA = m_vRigidBodies[a].invIntertia();
-				Mat4 iiB = m_vRigidBodies[b].invIntertia();
-
-				Vec3 prodA = cross(iiA.transformVector(cross(xA, n)), xA);
-				Vec3 prodB = cross(iiB.transformVector(cross(xB, n)), xB);
-
-				float prodAB = dot(prodA + prodB, n);
-
-				// suppose c=1
-				float impulse = -2 * dot(vRel, n) / (invMassA + invMassB + prodAB);
-
-				m_vRigidBodies[a].linVel += impulse * n * invMassA;
-				m_vRigidBodies[b].linVel -= impulse * n * invMassB;
-
-				m_vRigidBodies[a].momentum += cross(xA, impulse * n);
-				m_vRigidBodies[b].momentum -= cross(xB, impulse * n);
+				applyImpulse(info, &m_vRigidBodies[a], &m_vRigidBodies[b]);
 			}
 		}
 	}
+
+	// fix collisions between rigid bodies and particles
 }
 
 float SPHSystemSimulator::randFloat() {
 	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-}
-
-const float defaultKernelCoeff = 315.0 / (64.0 * M_PI);
-
-float SPHSystemSimulator::defaultKernel(float r, float h)
-{
-	if (r > h) {
-		return 0.0;
-	}
-
-	const float h2 = h * h;
-	const float h4 = h2 * h2;
-	const float h9 = h4 * h4 * h;
-	const float coeff = defaultKernelCoeff / h9;
-	const float d = h2 - (r * r);
-	return coeff * d * d * d;
-}
-
-const float pressureGradientCoeff = -45.0 / M_PI;
-
-Vec3 SPHSystemSimulator::pressureGradient(Vec3 r, float rlen, float h)
-{
-	if (rlen > h) {
-		return 0.0;
-	}
-
-	Vec3 direction = r / rlen;
-	const float h2 = h * h;
-	const float h6 = h2 * h2 * h2;
-	const float coeff = pressureGradientCoeff / h6;
-	const float diff2 = (h - rlen) * (h - rlen);
-	return -coeff * diff2 * direction;
-}
-
-const float viscosityLaplacianCoeff = -45.0 / M_PI;
-
-float SPHSystemSimulator::viscosityLaplacian(float rlen, float h)
-{
-	if (rlen > h) {
-		return 0.0;
-	}
-
-	const float h2 = h * h;
-	const float h6 = h2 * h2 * h2;
-	const float coeff = viscosityLaplacianCoeff / h6;
-	return coeff * (h - rlen);
 }
 
 void SPHSystemSimulator::initSphSystem()
@@ -324,7 +292,7 @@ void SPHSystemSimulator::initSphSystem()
 				Vec3 pos = Vec3(px, py, pz);
 				addParticle(pos);
 				m_vParticles[i].recalulateGridKey(h);
-				sGrid.addValue(m_vParticles[i].gridKey, i);
+				sGrid.addValue(m_vParticles[i].getGridKey(), i);
 				i++;
 			}
 		}
@@ -360,37 +328,15 @@ void SPHSystemSimulator::initComplex()
 void SPHSystemSimulator::calculatePressureAndDensity()
 {
 	for (Particle& p : m_vParticles) {
-		p.density = 0.0;
-		p.pressure = 0.0;
+		p.resetDensPres();
 	}
 
 	for (Particle& p : m_vParticles) {
-		Vec3 pos1 = p.getPosition();
-		int x0, y0, z0;
-		std::tie(x0, y0, z0) = p.gridKey;
-
-		for (int x : {x0 - 1, x0, x0 + 1}) {
-			for (int y : {y0 - 1, y0, y0 + 1}) {
-				for (int z : {z0 - 1, z0, z0 + 1}) {
-					if (sGrid.isEmpty(x, y, z)) {
-						continue;
-					}
-
-					for (const int& j : sGrid.get(x, y, z)) {
-						Vec3 pos2 = m_vParticles[j].getPosition();
-						float r = sqrt(pos1.squaredDistanceTo(pos2));
-						p.density += defaultKernel(r, h);
-					}
-				}
-			}
-		}
+		p.calculateDensPres(m_vParticles, sGrid, h);
 	}
 
-	// set pressure
 	for (Particle& p : m_vParticles) {
-		// multiply density by common coefficient
-		p.density *= particleMass;
-		p.pressure = gasStiffness * (p.density - restDensity);
+		p.correctDensPres(particleMass, gasStiffness, restDensity);
 	}
 }
 
@@ -398,57 +344,16 @@ void SPHSystemSimulator::calculateParticleForces()
 {
 	// reset forces
 	for (Particle& p : m_vParticles) {
-		p.forcePress = 0.0;
-		p.forceVisc = 0.0;
+		p.resetForces();
 	}
 
+	// sum up all forces
 	for (Particle& p : m_vParticles) {
-		Vec3 ri = p.getPosition();
-		int x0, y0, z0;
-		std::tie(x0, y0, z0) = p.gridKey;
-
-		for (int x : {x0 - 1, x0, x0 + 1}) {
-			for (int y : {y0 - 1, y0, y0 + 1}) {
-				for (int z : {z0 - 1, z0, z0 + 1}) {
-					if (sGrid.isEmpty(x, y, z)) {
-						continue;
-					}
-
-					for (const int& j : sGrid.get(x, y, z)) {
-						if (&p == &m_vParticles[j]) {
-							continue;
-						}
-
-						Vec3 rj = m_vParticles[j].getPosition();
-						Vec3 rij = ri - rj;
-						float rlen = sqrt(rij.x * rij.x + rij.y * rij.y + rij.z * rij.z);
-
-						if (rlen < h) {
-							float pi = p.pressure;
-							float pj = m_vParticles[j].pressure;
-							Vec3 ui = p.getVelocity();
-							Vec3 uj = m_vParticles[j].getVelocity();
-							float rhoi = p.density;
-							float rhoj = m_vParticles[j].density;
-
-							Vec3 pressDiff = ((pi / (rhoi * rhoi)) + (pj / (rhoj * rhoj))) * pressureGradient(rij, rlen, h);
-							Vec3 viscDiff = ((uj - ui) / rhoj) * viscosityLaplacian(rlen, h);
-
-							p.forcePress += pressDiff;
-							p.forceVisc += viscDiff;
-						}
-					}
-				}
-			}
-		}
+		p.calculateForces(m_vParticles, sGrid, h);
 	}
 
+	// correct forces
 	for (Particle& p : m_vParticles) {
-		// multiply pressure force by common coefficient
-		p.forcePress *= -p.density * particleMass;
-		// multiply viscosity force by common coefficient
-		p.forceVisc *= viscosity * particleMass;
-		// set gravity force according to formula 4.24
-		p.forceGrav = gravity * p.density;
+		p.correctForces(particleMass, viscosity, gravity);
 	}
 }
