@@ -41,6 +41,7 @@ public:
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void fixCollisions();
 	void initFluid();
+	void initSphSystem();
 	void calculatePressureAndDensity();
 	void calculateParticleForces();
 	void setMomentumOf(int i, Vec3 momentum);

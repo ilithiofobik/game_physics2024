@@ -135,7 +135,8 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 
 	switch (testCase) {
 	case 0:
-		initFluid();
+		//initFluid();
+		initSphSystem();
 		break;
 	case 1:
 		addRigidBody(Vec3(), Vec3(1, 0.6, 0.5), 2);
@@ -364,6 +365,30 @@ void SPHSystemSimulator::initFluid()
 		//m_vParticles[i].recalulateGridKey(h);
 		//sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
 	//}
+}
+
+void SPHSystemSimulator::initSphSystem()
+{
+	int dimensionSize = 17; // 17^3 is more or less 5000
+	float sideLen = 0.4642; // more or less 0.1^0.333333
+	float particleDist = sideLen / (dimensionSize - 1);
+	float halfLen = 0.5 * sideLen;
+
+	int i = 0;
+	for (int x = 0; x < dimensionSize; x++) {
+		float px = -halfLen + x * particleDist;
+		for (int y = 0; y < dimensionSize; y++) {
+			float py = -halfLen + y * particleDist;
+			for (int z = 0; z < dimensionSize; z++) {
+				float pz = -halfLen + z * particleDist;
+				Vec3 pos = Vec3(px, py, pz);
+				addParticle(pos, restDensity);
+				m_vParticles[i].recalulateGridKey(h);
+				sGrid.addValue(m_vParticles[i].gridKey.first, m_vParticles[i].gridKey.second, i);
+				i++;
+			}
+		}
+	}
 }
 
 void SPHSystemSimulator::calculatePressureAndDensity()
