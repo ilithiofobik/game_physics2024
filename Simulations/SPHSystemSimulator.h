@@ -25,42 +25,42 @@ public:
 
 	// ExtraFunctions
 	CollisionInfo getCollisionInfo(int a, int b);
+	float defaultKernel(float r, float h);
+	float randFloat();
+	float viscosityLaplacian(float rlen, float h);
 	int getNumberOfRigidBodies();
 	Vec3 getAngularVelocityOfRigidBody(int i);
 	Vec3 getLinearVelocityOfRigidBody(int i);
 	Vec3 getPositionOfRigidBody(int i);
+	Vec3 pressureGradient(Vec3 r, float rlen, float h);
+	void addParticle(Vec3 position);
 	void addRigidBody(Vec3 position, Vec3 size, int mass);
 	void addWall(Vec3 position, Vec3 size);
-	void addParticle(Vec3 position);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
-	void fixCollisions();
-	void initSphSystem();
-	void initComplex();
-	void calculatePressureAndDensity();
 	void calculateParticleForces();
+	void calculatePressureAndDensity();
+	void fixCollisions();
+	void initComplex();
+	void initSphSystem();
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);
-	float randFloat();
-	float defaultKernel(float r, float h);
-	Vec3 pressureGradient(Vec3 r, float rlen, float h);
-	float viscosityLaplacian(float rlen, float h);
 
 private:
 	// Attributes
-	Vec3 m_externalForce;
-	vector<RigidBody> m_vRigidBodies;
-	vector<Particle> m_vParticles;
-	SpatialGrid sGrid;
-	float dampingFactor;
 	float bound;
-	float h;
-	float restDensity;
-	float viscosity;
+	float dampingFactor;
 	float gasStiffness;
-	Vec3 gravity;
+	float h;
 	float particleMass;
 	float particleSize;
+	float restDensity;
+	float viscosity;
+	SpatialGrid sGrid;
+	Vec3 gravity;
+	Vec3 m_externalForce;
+	vector<Particle> m_vParticles;
+	vector<RigidBody> m_vRigidBodies;
 
 	// UI Attributes
 	Point2D m_mouse;

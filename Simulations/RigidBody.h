@@ -22,6 +22,7 @@ public:
 	void clearForce();
 	void setOrientation(const Quat& r);
 	void simulateTimestep(float timeStep);
+	bool isWall();
 
 	Vec3 linVel;
 	Vec3 momentum; // L

@@ -136,3 +136,8 @@ void RigidBody::setOrientation(const Quat& r)
 {
 	orientation = r.unit();
 }
+
+bool RigidBody::isWall()
+{
+	return invMass == 0.0;
+}

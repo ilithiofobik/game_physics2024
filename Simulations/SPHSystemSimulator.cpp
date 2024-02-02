@@ -114,12 +114,18 @@ void SPHSystemSimulator::reset()
 void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 {
 	Vec3 white = Vec3(1.0, 1.0, 1.0);
-	Vec3 blue = Vec3(0.2, 0.2, 1.0);
+	Vec3 blue = Vec3(0.3, 0.3, 1.0);
+	Vec3 red = Vec3(1.0, 0.3, 0.3);
 	Vec3 particleScale = particleSize * Vec3(1.0, 1.0, 1.0);
 
-	DUC->setUpLighting(Vec3(), white, 0.5, white);
-
 	for (RigidBody& rb : m_vRigidBodies) {
+		if (rb.isWall()) {
+			DUC->setUpLighting(Vec3(), red, 0.5, red);
+		}
+		else {
+			DUC->setUpLighting(Vec3(), white, 0.5, white);
+		}
+
 		DUC->drawRigidBody(rb.objToWorldMatrix());
 	}
 
@@ -303,9 +309,9 @@ float SPHSystemSimulator::viscosityLaplacian(float rlen, float h)
 
 void SPHSystemSimulator::initSphSystem()
 {
-	int dimensionSize = 9; // 17^3 is more or less 5000
-	float sideLen = 0.24575294117; // more or less 0.1^0.333333
-	float particleDist = sideLen / (dimensionSize - 1);
+	int dimensionSize = 5; // 17^3 is more or less 5000
+	float particleDist = h;
+	float sideLen = h * dimensionSize; // more or less 0.1^0.333333
 	float halfLen = 0.5 * sideLen;
 
 	int i = 0;
