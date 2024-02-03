@@ -49,13 +49,13 @@ private:
 	float bound;
 	float dampingFactor;
 	float gasStiffness;
+	float gravity;
 	float h;
 	float particleMass;
 	float particleSize;
 	float restDensity;
 	float viscosity;
 	SpatialGrid sGrid;
-	Vec3 gravity;
 	Vec3 m_externalForce;
 	vector<Particle> m_vParticles;
 	vector<RigidBody> m_vRigidBodies;

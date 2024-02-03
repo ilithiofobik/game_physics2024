@@ -7,10 +7,6 @@
 
 using namespace GamePhysics;
 
-#define PARTICLE_MASS = 1.0 // assume all particles have the same mass
-#define PARTICLE_SIZE = 0.1 // assume all particles have the same size
-#define CELL_PRECISION = 100;
-
 class Particle {
 public:
 	// Construtors
@@ -27,15 +23,14 @@ public:
 	void calculateDensPres(std::vector<Particle>& particles, SpatialGrid& sg, float h);
 	void calculateForces(std::vector<Particle>& particles, SpatialGrid& sg, float h);
 	void correctDensPres(float pm, float gasStiffness, float restDensity);
-	void correctForces(float pm, float visc, Vec3 g);
+	void correctForces(float pm, float visc, float g);
 	void correctPosition(float bound, float dampingFactor);
 	void fromRigidBody(RigidBody& rb);
+	void integrateVelocity(float timeStep);
+	void recalulateGridKey(float h);
 	void resetDensPres();
 	void resetForces();
 	void simulateTimestep(float timeStep);
-	void integrateVelocity(float timeStep);
-
-	void Particle::recalulateGridKey(float h);
 
 private:
 	Vec3 pos;

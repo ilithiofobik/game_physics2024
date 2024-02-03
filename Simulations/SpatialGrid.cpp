@@ -14,7 +14,6 @@ void SpatialGrid::addValue(std::tuple<int, int, int> t, int i)
 	(value[h]).insert(i);
 }
 
-// does not check if exists!
 void SpatialGrid::removeValue(std::tuple<int, int, int> t, int i)
 {
 	int h = getHash(t);
@@ -27,7 +26,6 @@ bool SpatialGrid::isEmpty(int x, int y, int z)
 	return value[h].empty();
 }
 
-// does not check if exists!
 const std::unordered_set<int>& SpatialGrid::get(int x, int y, int z)
 {
 	int h = getHash({ x,y,z });

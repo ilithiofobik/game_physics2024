@@ -23,11 +23,6 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 		vel.x *= -dampingFactor;
 	}
 
-	//if (pos.y > bound) {
-	//	pos.y = bound;
-	//	vel.y *= -dampingFactor;
-	//}
-
 	if (pos.z > bound) {
 		pos.z = bound;
 		vel.z *= -dampingFactor;
@@ -37,11 +32,6 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 		pos.x = -bound;
 		vel.x *= -dampingFactor;
 	}
-
-	//if (pos.y < -bound) {
-	//	pos.y = -bound;
-	//	vel.y *= -dampingFactor;
-	//}
 
 	if (pos.z < -bound) {
 		pos.z = -bound;
@@ -146,14 +136,14 @@ void Particle::calculateForces(std::vector<Particle>& particles, SpatialGrid& sg
 	}
 }
 
-void Particle::correctForces(float pm, float visc, Vec3 g)
+void Particle::correctForces(float pm, float visc, float g)
 {
 	// multiply pressure force by common coefficient
 	forcePress *= -density * pm;
 	// multiply viscosity force by common coefficient
 	forceVisc *= visc * pm;
 	// set gravity force according to formula 4.24
-	forceGrav = g * density;
+	forceGrav = Vec3(0.0, g, 0.0) * density;
 }
 
 void Particle::resetDensPres()
@@ -224,7 +214,6 @@ void Particle::integrateVelocity(float timeStep)
 {
 	vel += timeStep * (getForce() / density);
 }
-
 
 void Particle::simulateTimestep(float timeStep)
 {

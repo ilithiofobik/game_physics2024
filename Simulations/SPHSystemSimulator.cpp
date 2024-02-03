@@ -11,7 +11,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	bound = 0.5;
 	dampingFactor = 1.0;
 	gasStiffness = 3.0;
-	gravity = Vec3(0.0, -9.81, 0.0);
+	gravity = -9.81;
 	h = 0.0457;
 	particleMass = 0.02;
 	restDensity = 998.29;
@@ -106,6 +106,11 @@ void SPHSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 
 	TwAddVarRW(DUC->g_pTweakBar, "h", TW_TYPE_FLOAT, &h, "min=0.01 max=0.1");
 	TwAddVarRW(DUC->g_pTweakBar, "Particle Size", TW_TYPE_FLOAT, &particleSize, "min=0.01 max=0.1 step=0.01");
+	TwAddVarRW(DUC->g_pTweakBar, "Particle Mass", TW_TYPE_FLOAT, &particleMass, "min=0.01 max=0.1 step=0.01");
+	TwAddVarRW(DUC->g_pTweakBar, "Gas Stiffness", TW_TYPE_FLOAT, &gasStiffness, "min=1.0 max=10.0 step=0.5");
+	TwAddVarRW(DUC->g_pTweakBar, "Viscosity", TW_TYPE_FLOAT, &viscosity, "min=1.0 max=10.0 step=0.5");
+	TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=1.0 max=10.0 step=0.1");
+	TwAddVarRW(DUC->g_pTweakBar, "Rest Density", TW_TYPE_FLOAT, &restDensity, "min=100.0 max=1000.0 step=1.0");
 }
 
 void SPHSystemSimulator::reset()
@@ -160,7 +165,7 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 // with gravity
 void SPHSystemSimulator::externalForcesCalculations(float timeElapsed)
 {
-	m_externalForce = gravity;
+	m_externalForce = Vec3(0.0, gravity, 0.0);
 
 	Point2D mouseDiff;
 	mouseDiff.x = m_trackmouse.x - m_oldtrackmouse.x;
