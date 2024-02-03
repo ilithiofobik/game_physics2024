@@ -16,8 +16,8 @@ SPHSystemSimulator::SPHSystemSimulator()
 	particleMass = 0.02;
 	restDensity = 998.29;
 	sGrid = SpatialGrid();
-	viscosity = 3.5; // 1.003 x 10^{-3} ?
-	particleSize = powf(3.0 * particleMass / (4.0 * M_PI * restDensity), 0.3333334); // constant
+	viscosity = 3.5;
+	particleSize = powf(3.0 * particleMass / (4.0 * M_PI * restDensity), 0.3333334);
 }
 
 int SPHSystemSimulator::getNumberOfRigidBodies()
@@ -334,9 +334,9 @@ void SPHSystemSimulator::initLeapFrog(float timeStep)
 
 void SPHSystemSimulator::initComplex()
 {
-	int dimensionSize = 10; // 17^3 is more or less 5000
+	int dimensionSize = 10;
 	float particleDist = 0.7 * h;
-	float sideLen = particleDist * dimensionSize; // more or less 0.1^0.333333
+	float sideLen = particleDist * dimensionSize;
 	float halfLen = 0.5 * sideLen;
 	float halfLen2 = halfLen * halfLen;
 
