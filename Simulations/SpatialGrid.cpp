@@ -2,64 +2,43 @@
 
 SpatialGrid::SpatialGrid()
 {
+	for (int i = 0; i < BIG_PRIME; i++) {
+		std::unordered_set<int> s;
+		value[i] = s;
+	}
 }
 
 void SpatialGrid::addValue(std::tuple<int, int, int> t, int i)
 {
-	int x, y, z;
-	std::tie(x, y, z) = t;
-	ensureExists(x, y, z);
-	value.at(x).at(y).at(z).insert(i);
+	int h = getHash(t);
+	(value[h]).insert(i);
 }
 
 // does not check if exists!
 void SpatialGrid::removeValue(std::tuple<int, int, int> t, int i)
 {
-	int x, y, z;
-	std::tie(x, y, z) = t;
-	value.at(x).at(y).at(z).erase(i);
-}
-
-void SpatialGrid::ensureExists(int x, int y, int z)
-{
-	// if x not in grid, add it 
-	if (value.find(x) == value.end()) {
-		std::unordered_map<int, std::unordered_map<int, std::unordered_set<int>>> newMap = {};
-		value.insert(make_pair(x, newMap));
-	}
-
-	// if y not in x-row, add it 
-	if (value.at(x).find(y) == value.at(x).end()) {
-		std::unordered_map<int, std::unordered_set<int>> newMap = {};
-		value.at(x).insert(make_pair(y, newMap));
-	}
-
-	// if z not in y-col, add it 
-	if (value.at(x).at(y).find(z) == value.at(x).at(y).end()) {
-		std::unordered_set<int> newSet = {};
-		value.at(x).at(y).insert(make_pair(z, newSet));
-	}
+	int h = getHash(t);
+	(value[h]).erase(i);
 }
 
 bool SpatialGrid::isEmpty(int x, int y, int z)
 {
-	if (value.find(x) == value.end()) {
-		return true;
-	}
-
-	if (value.at(x).find(y) == value.at(x).end()) {
-		return true;
-	}
-
-	if (value.at(x).at(y).find(z) == value.at(x).at(y).end()) {
-		return true;
-	}
-
-	return value.at(x).at(y).at(z).empty();
+	int h = getHash({ x,y,z });
+	return value[h].empty();
 }
 
 // does not check if exists!
 const std::unordered_set<int>& SpatialGrid::get(int x, int y, int z)
 {
-	return value.at(x).at(y).at(z);
+	int h = getHash({ x,y,z });
+	return value[h];
+}
+
+int SpatialGrid::getHash(std::tuple<int, int, int> t)
+{
+	int a = std::get<0>(t) * 73856093;
+	int b = std::get<1>(t) * 19349663;
+	int c = std::get<2>(t) * 83492791;
+	int x = (a ^ b ^ c) % BIG_PRIME;
+	return std::abs(x);
 }

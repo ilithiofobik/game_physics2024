@@ -33,6 +33,7 @@ public:
 	void resetDensPres();
 	void resetForces();
 	void simulateTimestep(float timeStep);
+	void integrateVelocity(float timeStep);
 
 	void Particle::recalulateGridKey(float h);
 

@@ -23,10 +23,10 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 		vel.x *= -dampingFactor;
 	}
 
-	if (pos.y > bound) {
-		pos.y = bound;
-		vel.y *= -dampingFactor;
-	}
+	//if (pos.y > bound) {
+	//	pos.y = bound;
+	//	vel.y *= -dampingFactor;
+	//}
 
 	if (pos.z > bound) {
 		pos.z = bound;
@@ -61,7 +61,6 @@ void Particle::resetForces()
 	forceVisc = 0.0;
 	forceGrav = 0.0;
 }
-
 
 const float pressureGradientCoeff = -45.0 / M_PI;
 
@@ -219,8 +218,16 @@ Vec3 Particle::getForce()
 	return forcePress + forceVisc + forceGrav;
 }
 
-void Particle::simulateTimestep(float timeStep)
+void Particle::integrateVelocity(float timeStep)
 {
-	pos += timeStep * vel;
 	vel += timeStep * (getForce() / density);
 }
+
+
+void Particle::simulateTimestep(float timeStep)
+{
+	// leap frog
+	integrateVelocity(timeStep);
+	pos += timeStep * vel;
+}
+

@@ -35,10 +35,12 @@ public:
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void applyImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b);
 	void calculateParticleForces();
+
 	void calculatePressureAndDensity();
 	void fixCollisions();
 	void initComplex();
 	void initSphSystem();
+	void initLeapFrog(float timeStep);
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);
 	void setVelocityOf(int i, Vec3 velocity);

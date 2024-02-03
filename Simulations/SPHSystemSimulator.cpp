@@ -9,15 +9,17 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_trackmouse.x = m_trackmouse.y = 0;
 	// my constants
 	// water parameters
+	sGrid = SpatialGrid();
 	restDensity = 998.29;
 	particleMass = 0.02;
 	viscosity = 3.5; // 1.003 x 10^{-3} ?
 	gasStiffness = 3.0;
 	h = 0.0457;
-	particleSize = 0.01; // constant
 	dampingFactor = 0.9;
-	bound = 0.5;
+	bound = 1.0;
 	gravity = Vec3(0.0, -9.81, 0.0);
+
+	particleSize = powf(3.0 * particleMass / (4.0 * M_PI * restDensity), 0.3333334); // constant
 }
 
 int SPHSystemSimulator::getNumberOfRigidBodies()
@@ -150,6 +152,7 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 	switch (testCase) {
 	case 0:
 		initSphSystem();
+		initLeapFrog(0.001); // not nice but whatever
 		initComplex();
 		break;
 	default: break;
@@ -211,7 +214,7 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	}
 
 	// collisions
-	fixCollisions();
+	//fixCollisions();
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
@@ -275,7 +278,7 @@ void SPHSystemSimulator::fixCollisions() {
 	int iminX, iminY, iminZ, imaxX, imaxY, imaxZ;
 	RigidBody pAsRB = RigidBody(Vec3(), particleSize * Vec3(1.0, 1.0, 1.0));
 
-	for (int a = 1; a < m_vRigidBodies.size(); a++) {
+	for (int a = 0; a < m_vRigidBodies.size(); a++) {
 		std::tie(iminX, iminY, iminZ, imaxX, imaxY, imaxZ) = m_vRigidBodies[a].calculateBV(h, particleSize);
 
 		int counter = 0;
@@ -327,18 +330,27 @@ float SPHSystemSimulator::randFloat() {
 
 void SPHSystemSimulator::initSphSystem()
 {
-	int dimensionSize = 5; // 17^3 is more or less 5000
-	float particleDist = h;
-	float sideLen = h * dimensionSize; // more or less 0.1^0.333333
+	int dimensionSize = 10; // 17^3 is more or less 5000
+	float particleDist = 0.7 * h;
+	float sideLen = particleDist * dimensionSize; // more or less 0.1^0.333333
 	float halfLen = 0.5 * sideLen;
+	float halfLen2 = halfLen * halfLen;
 
 	int i = 0;
 	for (int x = 0; x < dimensionSize; x++) {
 		float px = -halfLen + x * particleDist;
+		float px2 = px * px;
 		for (int y = 0; y < dimensionSize; y++) {
 			float py = -halfLen + y * particleDist;
+			float py2 = py * py;
 			for (int z = 0; z < dimensionSize; z++) {
 				float pz = -halfLen + z * particleDist;
+				float pz2 = pz * pz;
+
+				if (px2 + py2 + pz2 > halfLen2) {
+					continue;
+				}
+
 				Vec3 pos = Vec3(px, py, pz);
 				addParticle(pos);
 				m_vParticles[i].recalulateGridKey(h);
@@ -349,6 +361,17 @@ void SPHSystemSimulator::initSphSystem()
 	}
 }
 
+void SPHSystemSimulator::initLeapFrog(float timeStep)
+{
+	calculatePressureAndDensity();
+	calculateParticleForces();
+
+	int i = 0;
+	for (Particle& p : m_vParticles) {
+		p.integrateVelocity(-0.5 * timeStep);
+	}
+}
+
 void SPHSystemSimulator::initComplex()
 {
 	Vec3 size = Vec3(0.1, 0.1, 0.1);
@@ -356,19 +379,19 @@ void SPHSystemSimulator::initComplex()
 	srand(0);
 	vector<int> range = { -1, 0, 1 };
 
-	for (float x : range) {
-		for (float y : range) {
-			for (float z : range) {
-				float phi = rand();
-				float mu = rand();
-				float coeff = 1.0 + 0.5 * sin(phi); // pseudorandom, slight difference
-				addRigidBody(0.3 * Vec3(x, y, z), size, 1);
-				setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
-				setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
-				idx++;
-			}
-		}
-	}
+	//for (float x : range) {
+	//	for (float y : range) {
+	//		for (float z : range) {
+	//			float phi = rand();
+	//			float mu = rand();
+	//			float coeff = 1.0 + 0.5 * sin(phi); // pseudorandom, slight difference
+	//			addRigidBody(0.3 * Vec3(x, y, z), size, 1);
+	//			setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
+	//			setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
+	//			idx++;
+	//		}
+	//	}
+	//}
 
 	Vec3 wallPos = Vec3(0.0, -5.5, 0.0);
 	Vec3 wallSize = Vec3(100.0, 10.0, 100.0);
