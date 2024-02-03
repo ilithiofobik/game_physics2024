@@ -34,12 +34,11 @@ public:
 	void addWall(Vec3 position, Vec3 size);
 	void applyForceOnBody(int i, Vec3 loc, Vec3 force);
 	void applyImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b);
+	void applyLinearImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b);
 	void calculateParticleForces();
-
 	void calculatePressureAndDensity();
 	void fixCollisions();
 	void initComplex();
-	void initSphSystem();
 	void initLeapFrog(float timeStep);
 	void setMomentumOf(int i, Vec3 momentum);
 	void setOrientationOf(int i, Quat orientation);

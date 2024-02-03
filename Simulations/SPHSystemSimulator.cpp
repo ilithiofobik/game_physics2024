@@ -7,18 +7,16 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_mouse.x = m_mouse.y = 0;
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
-	// my constants
-	// water parameters
-	sGrid = SpatialGrid();
-	restDensity = 998.29;
-	particleMass = 0.02;
-	viscosity = 3.5; // 1.003 x 10^{-3} ?
-	gasStiffness = 3.0;
-	h = 0.0457;
-	dampingFactor = 0.9;
-	bound = 1.0;
-	gravity = Vec3(0.0, -9.81, 0.0);
 
+	bound = 0.5;
+	dampingFactor = 1.0;
+	gasStiffness = 3.0;
+	gravity = Vec3(0.0, -9.81, 0.0);
+	h = 0.0457;
+	particleMass = 0.02;
+	restDensity = 998.29;
+	sGrid = SpatialGrid();
+	viscosity = 3.5; // 1.003 x 10^{-3} ?
 	particleSize = powf(3.0 * particleMass / (4.0 * M_PI * restDensity), 0.3333334); // constant
 }
 
@@ -107,6 +105,7 @@ void SPHSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 	this->DUC = DUC;
 
 	TwAddVarRW(DUC->g_pTweakBar, "h", TW_TYPE_FLOAT, &h, "min=0.01 max=0.1");
+	TwAddVarRW(DUC->g_pTweakBar, "Particle Size", TW_TYPE_FLOAT, &particleSize, "min=0.01 max=0.1 step=0.01");
 }
 
 void SPHSystemSimulator::reset()
@@ -151,7 +150,6 @@ void SPHSystemSimulator::notifyCaseChanged(int testCase)
 
 	switch (testCase) {
 	case 0:
-		initSphSystem();
 		initLeapFrog(0.001); // not nice but whatever
 		initComplex();
 		break;
@@ -214,7 +212,7 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	}
 
 	// collisions
-	//fixCollisions();
+	fixCollisions();
 }
 
 void SPHSystemSimulator::onClick(int x, int y) {
@@ -263,6 +261,26 @@ void SPHSystemSimulator::applyImpulse(CollisionInfo& info, RigidBody* a, RigidBo
 	b->momentum -= cross(xB, impulse * n);
 }
 
+void SPHSystemSimulator::applyLinearImpulse(CollisionInfo& info, RigidBody* a, RigidBody* b)
+{
+	Vec3 xWorld = info.collisionPointWorld;
+
+	Vec3 vA = a->pointVelocity(xWorld);
+	Vec3 vB = b->pointVelocity(xWorld);
+	Vec3 vRel = vA - vB;
+
+	Vec3 n = info.normalWorld;
+
+	float invMassA = a->getInvMass();
+	float invMassB = b->getInvMass();
+
+	// suppose c=1
+	float impulse = -2 * dot(vRel, n) / (invMassA + invMassB);
+
+	a->linVel += impulse * n * invMassA;
+	b->linVel -= impulse * n * invMassB;
+}
+
 void SPHSystemSimulator::fixCollisions() {
 	// fix collisions between rigid bodies
 	for (int a = 1; a < m_vRigidBodies.size(); a++) {
@@ -275,49 +293,19 @@ void SPHSystemSimulator::fixCollisions() {
 		}
 	}
 
-	int iminX, iminY, iminZ, imaxX, imaxY, imaxZ;
-	RigidBody pAsRB = RigidBody(Vec3(), particleSize * Vec3(1.0, 1.0, 1.0));
-
-	for (int a = 0; a < m_vRigidBodies.size(); a++) {
-		std::tie(iminX, iminY, iminZ, imaxX, imaxY, imaxZ) = m_vRigidBodies[a].calculateBV(h, particleSize);
-
-		int counter = 0;
-		int properCounter = 0;
-		for (int x = iminX; x <= imaxX; x++) {
-			for (int y = iminY; y <= imaxY; y++) {
-				for (int z = iminZ; z <= imaxZ; z++) {
-					counter++;
-					if (sGrid.isEmpty(x, y, z)) {
-						continue;
-					}
-					properCounter++;
-
-					for (const int& j : sGrid.get(x, y, z)) {
-						pAsRB.linVel = m_vParticles[j].getVelocity();
-						pAsRB.position = m_vParticles[j].getPosition();
-						pAsRB.torque = Vec3();
-
-						CollisionInfo info = getCollisionInfo(&m_vRigidBodies[a], &pAsRB);
-
-						if (info.isValid) {
-							applyImpulse(info, &m_vRigidBodies[a], &pAsRB);
-							m_vParticles[j].fromRigidBody(pAsRB);
-						}
-					}
-				}
-			}
-		}
-		cout << "Counter: " << counter << ", Proper counter: " << properCounter << endl;
-	}
-
 	// fix collisions between rigid bodies and particles
 	for (Particle& p : m_vParticles) {
+		auto pos = p.getPosition();
 		RigidBody pAsRb = p.toRigidBody(particleSize, particleMass);
 		for (int b = 0; b < m_vRigidBodies.size(); b++) {
 			CollisionInfo info = getCollisionInfo(&pAsRb, &m_vRigidBodies[b]);
 
 			if (info.isValid) {
-				applyImpulse(info, &pAsRb, &m_vRigidBodies[b]);
+				auto n = info.normalWorld;
+				auto d = info.depth;
+				applyLinearImpulse(info, &pAsRb, &m_vRigidBodies[b]);
+				pAsRb.position += 2.0 * d * n;
+				//break;
 			}
 		}
 		p.fromRigidBody(pAsRb);
@@ -328,7 +316,18 @@ float SPHSystemSimulator::randFloat() {
 	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 }
 
-void SPHSystemSimulator::initSphSystem()
+void SPHSystemSimulator::initLeapFrog(float timeStep)
+{
+	calculatePressureAndDensity();
+	calculateParticleForces();
+
+	int i = 0;
+	for (Particle& p : m_vParticles) {
+		p.integrateVelocity(-0.5 * timeStep);
+	}
+}
+
+void SPHSystemSimulator::initComplex()
 {
 	int dimensionSize = 10; // 17^3 is more or less 5000
 	float particleDist = 0.7 * h;
@@ -359,43 +358,16 @@ void SPHSystemSimulator::initSphSystem()
 			}
 		}
 	}
-}
 
-void SPHSystemSimulator::initLeapFrog(float timeStep)
-{
-	calculatePressureAndDensity();
-	calculateParticleForces();
-
-	int i = 0;
-	for (Particle& p : m_vParticles) {
-		p.integrateVelocity(-0.5 * timeStep);
-	}
-}
-
-void SPHSystemSimulator::initComplex()
-{
-	Vec3 size = Vec3(0.1, 0.1, 0.1);
-	int idx = 0;
-	srand(0);
-	vector<int> range = { -1, 0, 1 };
-
-	//for (float x : range) {
-	//	for (float y : range) {
-	//		for (float z : range) {
-	//			float phi = rand();
-	//			float mu = rand();
-	//			float coeff = 1.0 + 0.5 * sin(phi); // pseudorandom, slight difference
-	//			addRigidBody(0.3 * Vec3(x, y, z), size, 1);
-	//			setVelocityOf(idx, -0.5 * coeff * Vec3(x, y, z));
-	//			setMomentumOf(idx, 0.05 * coeff * Vec3(sin(phi), cos(phi) * sin(mu), cos(phi) * cos(mu)));
-	//			idx++;
-	//		}
-	//	}
-	//}
-
-	Vec3 wallPos = Vec3(0.0, -5.5, 0.0);
-	Vec3 wallSize = Vec3(100.0, 10.0, 100.0);
+	Vec3 wallPos = Vec3(0.0, -1.0, 0.0);
+	Vec3 wallSize = Vec3(1.0, 1.0, 1.0);
 	addWall(wallPos, wallSize);
+
+	Vec3 boxPos = Vec3(0.0, 0.5, 0.0);
+	Vec3 boxSize = 0.1 * Vec3(1.0, 1.0, 1.0);
+	Vec3 momentum = 0.1 * Vec3(randFloat(), randFloat(), randFloat());
+	addRigidBody(boxPos, boxSize, 1.0);
+	setMomentumOf(1, momentum);
 }
 
 void SPHSystemSimulator::calculatePressureAndDensity()

@@ -145,6 +145,8 @@ bool RigidBody::isWall()
 std::tuple<int, int, int, int, int, int> RigidBody::calculateBV(float h, float particleSize)
 {
 	Mat4 mat = objToWorldMatrix();
+	auto x = mat.toDirectXMatrix();
+	x.r;
 	Real minX = std::numeric_limits<Real>::max();
 	Real minY = minX;
 	Real minZ = minX;
@@ -158,6 +160,7 @@ std::tuple<int, int, int, int, int, int> RigidBody::calculateBV(float h, float p
 			for (float z : {-1.0, 1.0}) {
 				Vec3 v = Vec3(x, y, z);
 				Vec3 u = mat.transformVector(v);
+				//cout << "x=" << u.x << ", y=" << u.y << ", z=" << u.z << endl;
 				minX = std::min(v.x, minX);
 				minY = std::min(v.y, minY);
 				minZ = std::min(v.z, minZ);

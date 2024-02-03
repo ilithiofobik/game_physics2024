@@ -38,10 +38,10 @@ void Particle::correctPosition(float bound, float dampingFactor) {
 		vel.x *= -dampingFactor;
 	}
 
-	if (pos.y < -bound) {
-		pos.y = -bound;
-		vel.y *= -dampingFactor;
-	}
+	//if (pos.y < -bound) {
+	//	pos.y = -bound;
+	//	vel.y *= -dampingFactor;
+	//}
 
 	if (pos.z < -bound) {
 		pos.z = -bound;
@@ -99,8 +99,10 @@ float Particle::viscosityLaplacian(float rlen, float h)
 
 RigidBody Particle::toRigidBody(float particleSize, float particleMass)
 {
-	Vec3 size = particleSize * sqrt(0.5) * Vec3(1.0, 1.0, 1.0);
-	return RigidBody(pos, particleSize, particleMass);
+	Vec3 size = particleSize * Vec3(1.0, 1.0, 1.0);
+	RigidBody rb = RigidBody(pos, particleSize, particleMass);
+	rb.linVel = vel;
+	return rb;
 }
 
 void Particle::calculateForces(std::vector<Particle>& particles, SpatialGrid& sg, float h)
