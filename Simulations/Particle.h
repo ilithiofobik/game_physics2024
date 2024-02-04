@@ -25,7 +25,6 @@ public:
 	void calculateForces(std::vector<Particle>& particles, SpatialGrid& sg, float h);
 	void correctDensPres(float pm, float gasStiffness, float restDensity);
 	void correctForces(float pm, float visc, float g);
-	void correctPosition(float bound, float dampingFactor);
 	void fromRigidBody(RigidBody& rb);
 	void integrateVelocity(float timeStep);
 	void recalulateGridKey(float h);

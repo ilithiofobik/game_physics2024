@@ -18,28 +18,6 @@ Vec3 Particle::getVelocity()
 	return vel;
 }
 
-void Particle::correctPosition(float bound, float dampingFactor) {
-	if (pos.x > bound) {
-		pos.x = bound;
-		vel.x *= -dampingFactor;
-	}
-
-	if (pos.z > bound) {
-		pos.z = bound;
-		vel.z *= -dampingFactor;
-	}
-
-	if (pos.x < -bound) {
-		pos.x = -bound;
-		vel.x *= -dampingFactor;
-	}
-
-	if (pos.z < -bound) {
-		pos.z = -bound;
-		vel.z *= -dampingFactor;
-	}
-}
-
 void Particle::fromRigidBody(RigidBody& rb)
 {
 	pos = rb.getPosition();

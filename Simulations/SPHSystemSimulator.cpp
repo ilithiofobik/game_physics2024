@@ -8,8 +8,7 @@ SPHSystemSimulator::SPHSystemSimulator()
 	m_oldtrackmouse.x = m_oldtrackmouse.y = 0;
 	m_trackmouse.x = m_trackmouse.y = 0;
 
-	bound = 0.5;
-	dampingFactor = 1.0;
+	drawWalls = false;
 	gasStiffness = 3.0;
 	gravity = -9.81;
 	h = 0.0457;
@@ -116,6 +115,7 @@ void SPHSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 	TwAddVarRW(DUC->g_pTweakBar, "Viscosity", TW_TYPE_FLOAT, &viscosity, "min=1.0 max=10.0 step=0.5");
 	TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=1.0 max=10.0 step=0.1");
 	TwAddVarRW(DUC->g_pTweakBar, "Rest Density", TW_TYPE_FLOAT, &restDensity, "min=100.0 max=1000.0 step=1.0");
+	TwAddVarRW(DUC->g_pTweakBar, "Draw Walls", TW_TYPE_BOOLCPP, &drawWalls, "");
 }
 
 void SPHSystemSimulator::reset()
@@ -137,13 +137,15 @@ void SPHSystemSimulator::drawFrame(ID3D11DeviceContext* pd3dImmediateContext)
 
 	for (RigidBody& rb : m_vRigidBodies) {
 		if (rb.isWall()) {
-			DUC->setUpLighting(Vec3(), red, 0.5, red);
+			if (drawWalls) {
+				DUC->setUpLighting(Vec3(), red, 0.5, red);
+				DUC->drawRigidBody(rb.objToWorldMatrix());
+			}
 		}
 		else {
 			DUC->setUpLighting(Vec3(), white, 0.5, white);
+			DUC->drawRigidBody(rb.objToWorldMatrix());
 		}
-
-		DUC->drawRigidBody(rb.objToWorldMatrix());
 	}
 
 	DUC->setUpLighting(Vec3(), blue, 0.5, blue);
@@ -209,7 +211,6 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 		tuple<int, int, int> oldIdx = p.getGridKey();
 
 		p.simulateTimestep(timeStep);
-		p.correctPosition(bound, dampingFactor);
 		p.recalulateGridKey(h);
 
 		tuple<int, int, int> newIdx = p.getGridKey();
@@ -282,8 +283,8 @@ void SPHSystemSimulator::applyLinearImpulse(CollisionInfo& info, RigidBody* a, R
 	float invMassA = a->getInvMass();
 	float invMassB = b->getInvMass();
 
-	// suppose c=1
-	float impulse = -2 * dot(vRel, n) / (invMassA + invMassB);
+	// suppose c=0.9
+	float impulse = -1.9 * dot(vRel, n) / (invMassA + invMassB);
 
 	a->linVel += impulse * n * invMassA;
 	b->linVel -= impulse * n * invMassB;
@@ -335,9 +336,9 @@ void SPHSystemSimulator::initLeapFrog(float timeStep)
 
 void SPHSystemSimulator::initComplex()
 {
-	int dimLen = 10;
-	float particleDist = 0.7 * h;
-	float sideLen = particleDist * dimLen;
+	int dimLen = 12;
+	float particleDist = 0.95 * h;
+	float sideLen = particleDist * (dimLen - 1);
 	float halfLen = 0.5 * sideLen;
 	float halfLen2 = halfLen * halfLen;
 
@@ -351,25 +352,45 @@ void SPHSystemSimulator::initComplex()
 				float pz = -halfLen + z * particleDist;
 				float pz2 = pz * pz;
 
-				if (px2 + py2 + pz2 > halfLen2) {
-					continue;
+				if (px2 + py2 + pz2 <= halfLen2) {
+					Vec3 pos = Vec3(px, py, pz);
+					addParticle(pos);
 				}
-
-				Vec3 pos = Vec3(px, py, pz);
-				addParticle(pos);
 			}
 		}
 	}
 
-	Vec3 wallPos = Vec3(0.0, -1.0, 0.0);
-	Vec3 wallSize = Vec3(1.0, 1.0, 1.0);
-	addWall(wallPos, wallSize);
+	cout << "Num of particles: " << m_vParticles.size() << endl;
 
-	Vec3 boxPos = Vec3(0.0, 0.5, 0.0);
+	int numOfBoxes = 2;
 	Vec3 boxSize = 0.1 * Vec3(1.0, 1.0, 1.0);
-	Vec3 momentum = 0.1 * Vec3(randFloat(), randFloat(), randFloat());
-	addRigidBody(boxPos, boxSize, 1.0);
-	setMomentumOf(1, momentum);
+
+	for (int i = 0; i < numOfBoxes; i++) {
+		Vec3 boxPos = Vec3(0.0, 1.0 + i, 0.0);
+		Vec3 momentum = 0.1 * Vec3(randFloat(), randFloat(), randFloat());
+		addRigidBody(boxPos, boxSize, 1.0);
+		setMomentumOf(i, momentum);
+	}
+
+	const float alpha = 0.9999;
+
+	// bottom
+	Vec3 btmPos = Vec3(0.0, -1.0, 0.0);
+	Vec3 btmSize = alpha * Vec3(1.0, 1.0, 1.0);
+	addWall(btmPos, btmSize);
+
+	const float wallMiddle = 4.5;
+	const Vec3 wallSize = alpha * Vec3(1.0, 10.0, 1.0);
+
+	Vec3 bckPos = Vec3(0.0, wallMiddle, -1.0);
+	Vec3 frtPos = Vec3(0.0, wallMiddle, 1.0);
+	Vec3 lftPos = Vec3(-1.0, wallMiddle, 0.0);
+	Vec3 rhtPos = Vec3(1.0, wallMiddle, 0.0);
+
+	addWall(bckPos, wallSize);
+	addWall(frtPos, wallSize);
+	addWall(lftPos, wallSize);
+	addWall(rhtPos, wallSize);
 }
 
 void SPHSystemSimulator::calculatePressureAndDensity()

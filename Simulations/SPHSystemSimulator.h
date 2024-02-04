@@ -46,8 +46,7 @@ public:
 
 private:
 	// Attributes
-	float bound;
-	float dampingFactor;
+	bool drawWalls;
 	float gasStiffness;
 	float gravity;
 	float h;
