@@ -11,7 +11,7 @@ public:
 	SpatialGrid();
 
 	void addValue(std::tuple<int, int, int> t, int i);
-	void removeValue(std::tuple<int, int, int> t, int i);
+	void moveValue(std::tuple<int, int, int> a, std::tuple<int, int, int> b, int i);
 	bool isEmpty(int x, int y, int z);
 	const std::unordered_set<int>& get(int x, int y, int z);
 
@@ -20,6 +20,5 @@ private:
 
 private:
 	std::unordered_set<int> value[BIG_PRIME];
-	//std::unordered_map < int, std::unordered_map<int, std::unordered_map<int, std::unordered_set<int>>>> value;
 };
 #endif

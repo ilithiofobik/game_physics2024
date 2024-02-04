@@ -1,11 +1,12 @@
 #include "Particle.h"
 
-Particle::Particle(Vec3 position, float d)
+Particle::Particle(Vec3 position, float d, int i)
 {
 	pos = position;
 	vel = Vec3();
 	density = d;
 	pressure = 0.0;
+	idx = i;
 }
 
 Vec3 Particle::getPosition() {
@@ -150,6 +151,11 @@ void Particle::resetDensPres()
 {
 	density = 0.0;
 	pressure = 0.0;
+}
+
+int Particle::getIdx()
+{
+	return idx;
 }
 
 const float defaultKernelCoeff = 315.0 / (64.0 * M_PI);

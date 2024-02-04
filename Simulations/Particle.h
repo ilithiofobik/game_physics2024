@@ -10,10 +10,11 @@ using namespace GamePhysics;
 class Particle {
 public:
 	// Construtors
-	Particle(Vec3 position, float d);
+	Particle(Vec3 position, float d, int idx);
 
 	float defaultKernel(float r, float h);
 	float viscosityLaplacian(float rlen, float h);
+	int getIdx();
 	RigidBody toRigidBody(float particleSize, float particleMass);
 	tuple<int, int, int> getGridKey();
 	Vec3 getForce();
@@ -33,13 +34,14 @@ public:
 	void simulateTimestep(float timeStep);
 
 private:
-	Vec3 pos;
-	Vec3 vel;
-	Vec3 forcePress;
-	Vec3 forceVisc;
-	Vec3 forceGrav;
-	tuple<int, int, int> gridKey;
 	float density;
 	float pressure;
+	int idx;
+	tuple<int, int, int> gridKey;
+	Vec3 forceGrav;
+	Vec3 forcePress;
+	Vec3 forceVisc;
+	Vec3 pos;
+	Vec3 vel;
 };
 #endif

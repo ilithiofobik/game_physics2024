@@ -15,7 +15,6 @@ SPHSystemSimulator::SPHSystemSimulator()
 	h = 0.0457;
 	particleMass = 0.02;
 	restDensity = 998.29;
-	sGrid = SpatialGrid();
 	viscosity = 3.5;
 	particleSize = powf(3.0 * particleMass / (4.0 * M_PI * restDensity), 0.3333334);
 }
@@ -59,8 +58,14 @@ void SPHSystemSimulator::addWall(Vec3 position, Vec3 size)
 
 void SPHSystemSimulator::addParticle(Vec3 position)
 {
-	Particle newParticle = Particle(position, restDensity);
+	// adding to particles
+	int idx = m_vParticles.size();
+	Particle newParticle = Particle(position, restDensity, idx);
 	m_vParticles.push_back(newParticle);
+
+	// adding to spatial grid
+	m_vParticles[idx].recalulateGridKey(h);
+	sGrid.addValue(m_vParticles[idx].getGridKey(), idx);
 }
 
 void SPHSystemSimulator::setOrientationOf(int i, Quat orientation)
@@ -200,7 +205,6 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 	calculatePressureAndDensity();
 	calculateParticleForces();
 
-	int i = 0;
 	for (Particle& p : m_vParticles) {
 		tuple<int, int, int> oldIdx = p.getGridKey();
 
@@ -208,12 +212,11 @@ void SPHSystemSimulator::simulateTimestep(float timeStep)
 		p.correctPosition(bound, dampingFactor);
 		p.recalulateGridKey(h);
 
-		if (oldIdx != p.getGridKey()) {
-			sGrid.removeValue(oldIdx, i);
-			sGrid.addValue(p.getGridKey(), i);
-		}
+		tuple<int, int, int> newIdx = p.getGridKey();
 
-		i++;
+		if (oldIdx != newIdx) {
+			sGrid.moveValue(oldIdx, newIdx, p.getIdx());
+		}
 	}
 
 	// collisions
@@ -310,7 +313,6 @@ void SPHSystemSimulator::fixCollisions() {
 				auto d = info.depth;
 				applyLinearImpulse(info, &pAsRb, &m_vRigidBodies[b]);
 				pAsRb.position += 2.0 * d * n;
-				//break;
 			}
 		}
 		p.fromRigidBody(pAsRb);
@@ -326,7 +328,6 @@ void SPHSystemSimulator::initLeapFrog(float timeStep)
 	calculatePressureAndDensity();
 	calculateParticleForces();
 
-	int i = 0;
 	for (Particle& p : m_vParticles) {
 		p.integrateVelocity(-0.5 * timeStep);
 	}
@@ -334,20 +335,19 @@ void SPHSystemSimulator::initLeapFrog(float timeStep)
 
 void SPHSystemSimulator::initComplex()
 {
-	int dimensionSize = 10;
+	int dimLen = 10;
 	float particleDist = 0.7 * h;
-	float sideLen = particleDist * dimensionSize;
+	float sideLen = particleDist * dimLen;
 	float halfLen = 0.5 * sideLen;
 	float halfLen2 = halfLen * halfLen;
 
-	int i = 0;
-	for (int x = 0; x < dimensionSize; x++) {
+	for (int x = 0; x < dimLen; x++) {
 		float px = -halfLen + x * particleDist;
 		float px2 = px * px;
-		for (int y = 0; y < dimensionSize; y++) {
+		for (int y = 0; y < dimLen; y++) {
 			float py = -halfLen + y * particleDist;
 			float py2 = py * py;
-			for (int z = 0; z < dimensionSize; z++) {
+			for (int z = 0; z < dimLen; z++) {
 				float pz = -halfLen + z * particleDist;
 				float pz2 = pz * pz;
 
@@ -357,9 +357,6 @@ void SPHSystemSimulator::initComplex()
 
 				Vec3 pos = Vec3(px, py, pz);
 				addParticle(pos);
-				m_vParticles[i].recalulateGridKey(h);
-				sGrid.addValue(m_vParticles[i].getGridKey(), i);
-				i++;
 			}
 		}
 	}

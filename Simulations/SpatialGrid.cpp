@@ -14,10 +14,12 @@ void SpatialGrid::addValue(std::tuple<int, int, int> t, int i)
 	(value[h]).insert(i);
 }
 
-void SpatialGrid::removeValue(std::tuple<int, int, int> t, int i)
+void SpatialGrid::moveValue(std::tuple<int, int, int> a, std::tuple<int, int, int> b, int i)
 {
-	int h = getHash(t);
-	(value[h]).erase(i);
+	int ha = getHash(a);
+	int hb = getHash(b);
+	(value[ha]).erase(i);
+	(value[hb]).insert(i);
 }
 
 bool SpatialGrid::isEmpty(int x, int y, int z)
