@@ -113,7 +113,7 @@ void SPHSystemSimulator::initUI(DrawingUtilitiesClass* DUC)
 	TwAddVarRW(DUC->g_pTweakBar, "Particle Mass", TW_TYPE_FLOAT, &particleMass, "min=0.01 max=0.1 step=0.01");
 	TwAddVarRW(DUC->g_pTweakBar, "Gas Stiffness", TW_TYPE_FLOAT, &gasStiffness, "min=1.0 max=10.0 step=0.5");
 	TwAddVarRW(DUC->g_pTweakBar, "Viscosity", TW_TYPE_FLOAT, &viscosity, "min=1.0 max=10.0 step=0.5");
-	TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=1.0 max=10.0 step=0.1");
+	TwAddVarRW(DUC->g_pTweakBar, "Gravity", TW_TYPE_FLOAT, &gravity, "min=-10.0 max=-1.0 step=0.1");
 	TwAddVarRW(DUC->g_pTweakBar, "Rest Density", TW_TYPE_FLOAT, &restDensity, "min=100.0 max=1000.0 step=1.0");
 	TwAddVarRW(DUC->g_pTweakBar, "Draw Walls", TW_TYPE_BOOLCPP, &drawWalls, "");
 }
