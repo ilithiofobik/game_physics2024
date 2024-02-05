@@ -162,8 +162,8 @@ void DiffusionSimulator::diffuseTemperatureExplicit(Real timestep) {
 			Real t_imj = T->getCurr(i - 1, j);
 			Real t_ijp = T->getCurr(i, j + 1);
 			Real t_ijm = T->getCurr(i, j - 1);
-			Real diffx = (t_ipj - 2.0 * t_ij + t_imj) / dx;
-			Real diffy = (t_ijp - 2.0 * t_ij + t_ijm) / dy;
+			Real diffx = (t_ipj - 2.0 * t_ij + t_imj) / (dx * dx);
+			Real diffy = (t_ijp - 2.0 * t_ij + t_ijm) / (dy * dy);
 			Real diff = global_alpha * timestep * (diffx + diffy);
 			T->setNext(i, j, t_ij + diff);
 		}

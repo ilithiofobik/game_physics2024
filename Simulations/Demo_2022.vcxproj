@@ -224,7 +224,6 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="C:\USERS\WOJCI\APPDATA\LOCAL\TEMP\TFSTEMP\VCTMP10480_595090.DIFFUSIONSIMULATOR.3974D3FE.BIEŻĄCE.CPP" />
     <ClCompile Include="DiffusionSimulator.cpp" />
     <ClCompile Include="TemplateSimulator.cpp" />
     <ClCompile Include="util\FFmpeg.cpp" />
